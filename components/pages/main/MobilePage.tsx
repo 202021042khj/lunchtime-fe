@@ -27,6 +27,8 @@ export default function MobilePage(logic: UseHomeLogicResult) {
 
       {locationStatus === "unavailable" ? (
         <HomeStatusSection kind="noLocation" {...statusProps} />
+      ) : !location && locationStatus === "locating" ? (
+        <HomeStatusSection kind="locating" {...statusProps} />
       ) : !location || (!reco && status === "loading") ? (
         <HomeSkeletonSection variant="mobile" />
       ) : !reco || status === "error" ? (

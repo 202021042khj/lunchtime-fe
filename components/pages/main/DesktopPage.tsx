@@ -22,6 +22,7 @@ function renderContent(logic: UseHomeLogicResult) {
   };
 
   if (locationStatus === "unavailable") return <HomeStatusSection kind="noLocation" {...statusProps} />;
+  if (!location && locationStatus === "locating") return <HomeStatusSection kind="locating" {...statusProps} />;
   if (!location || (!reco && status === "loading")) return <HomeSkeletonSection variant="desktop" />;
   if (!reco || status === "error") return <HomeStatusSection kind="error" {...statusProps} />;
 

@@ -21,6 +21,7 @@ export interface LocationState {
 }
 
 const STORAGE_KEY = "lunchtime.location";
+const LOCATE_TIMEOUT_MS = 10000;
 const SERVER_STATE: LocationState = { status: "idle", location: null };
 
 let state: LocationState | null = null;
@@ -76,18 +77,30 @@ export function locateCurrentPosition(): Promise<boolean> {
   update({ ...prev, status: prev.location ? prev.status : "locating" });
 
   return new Promise((resolve) => {
+    let settled = false;
+    const fail = () => {
+      if (settled) return;
+      settled = true;
+      window.clearTimeout(timer);
+      const current = getLocationSnapshot();
+      update(current.location ? { ...current, status: "ready" } : { status: "unavailable", location: null });
+      resolve(false);
+    };
+    // geolocation의 timeout 옵션은 권한을 허용한 뒤에야 시작된다.
+    // 권한 창을 닫거나 응답하지 않으면 콜백이 오지 않으므로 전체 대기 시간을 따로 둔다
+    const timer = window.setTimeout(fail, LOCATE_TIMEOUT_MS);
+
     navigator.geolocation.getCurrentPosition(
       async ({ coords }) => {
+        if (settled) return;
+        settled = true;
+        window.clearTimeout(timer);
         const coord = { lat: coords.latitude, lng: coords.longitude };
         const name = await reverseGeocode(coord).then((n) => n.name).catch(() => "현재 위치");
         setCurrentLocation({ ...coord, name, source: "gps" });
         resolve(true);
       },
-      () => {
-        const current = getLocationSnapshot();
-        update(current.location ? { ...current, status: "ready" } : { status: "unavailable", location: null });
-        resolve(false);
-      },
+      fail,
       { enableHighAccuracy: false, timeout: 8000, maximumAge: 5 * 60 * 1000 },
     );
   });
