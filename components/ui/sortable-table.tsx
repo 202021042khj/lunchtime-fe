@@ -4,6 +4,10 @@ import React, { ComponentPropsWithoutRef, forwardRef, useState } from "react";
 import {
   DndContext,
   DragEndEvent,
+  DragStartEvent,
+  Modifiers,
+  SensorDescriptor,
+  SensorOptions,
   closestCenter,
   DragOverlay,
   PointerSensor,
@@ -119,9 +123,14 @@ SortableTableHeader.displayName = "SortableTableHeader";
 /* -------------------------------------------------------------------------------------------------
  * SortableTableBody
  * -----------------------------------------------------------------------------------------------*/
+// 드래그 정렬 대상은 id만 있으면 된다
+export interface SortableItem {
+  id: string;
+}
+
 interface SortableTableBodyProps {
-  items: any[];
-  children: (item: any, index: number) => React.ReactNode;
+  items: SortableItem[];
+  children: (item: SortableItem, index: number) => React.ReactNode;
   className?: string;
 }
 
@@ -143,14 +152,14 @@ SortableTableBody.displayName = "SortableTableBody";
  * SortableTable
  * -----------------------------------------------------------------------------------------------*/
 interface SortableTableProps {
-  items: any[];
-  onItemsChange: (items: any[]) => void;
+  items: SortableItem[];
+  onItemsChange: (items: SortableItem[]) => void;
   children: React.ReactNode;
   className?: string;
   wrapperClassName?: string;
-  sensors?: any;
-  modifiers?: any[];
-  renderDragOverlay?: (item: any) => React.ReactNode;
+  sensors?: SensorDescriptor<SensorOptions>[];
+  modifiers?: Modifiers;
+  renderDragOverlay?: (item: SortableItem) => React.ReactNode;
 }
 
 export const SortableTable = forwardRef<HTMLDivElement, SortableTableProps>(
@@ -175,10 +184,11 @@ export const SortableTable = forwardRef<HTMLDivElement, SortableTableProps>(
     );
 
     const finalSensors = sensors || defaultSensors;
+    const activeItem = items.find((item) => item.id === activeId);
 
     // 드래그 시작 시 실행되는 함수
-    const handleDragStart = (event: any) => {
-      setActiveId(event.active.id);
+    const handleDragStart = (event: DragStartEvent) => {
+      setActiveId(String(event.active.id));
     };
 
     // 드래그 종료 시 실행되는 함수
@@ -217,8 +227,8 @@ export const SortableTable = forwardRef<HTMLDivElement, SortableTableProps>(
 
             {/* 오버레이 영역 */}
             <DragOverlay modifiers={[restrictToVerticalAxis]}>
-              {activeId && renderDragOverlay
-                ? renderDragOverlay(items.find((item) => item.id === activeId))
+              {activeItem && renderDragOverlay
+                ? renderDragOverlay(activeItem)
                 : null}
             </DragOverlay>
           </DndContext>

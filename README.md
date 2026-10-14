@@ -53,7 +53,7 @@ Full conventions (naming, Desktop/Mobile split, section modularization, theming 
 
 `components/ui/` is a design system ported from an internal admin template: Button, Dialog, AlertDialog, Popover, Tooltip, Command palette, Combobox, Modal/ConfirmModal, Notify (toast), Table/SortableTable, and a small icon set — Radix UI + shadcn "new-york" style underneath. `components.json` is set up so the shadcn CLI can add more (`npx shadcn add <name>`).
 
-Dark mode is automatic (`prefers-color-scheme`, no manual toggle). Always use semantic tokens (`bg-background`, `text-foreground`, `text-muted-foreground`, `border-border`, ...) instead of hardcoded Tailwind grays so components stay theme-aware — see the Theming section in `docs/ARCHITECTURE.md` for the full rationale and a known gap in the ported kit's own color palette.
+lunchtime v1 is light-only (the Figma design has no dark theme); brand tokens such as `bg-brand-primary` and `text-labels-secondary` are defined in `app/globals.css`. Always use semantic tokens (`bg-background`, `text-foreground`, `text-muted-foreground`, `border-border`, ...) instead of hardcoded Tailwind grays so components stay theme-aware — see the Theming section in `docs/ARCHITECTURE.md` for the full rationale and a known gap in the ported kit's own color palette.
 
 ## Learn more
 

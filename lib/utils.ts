@@ -40,10 +40,24 @@ const CUSTOM_FONT_SIZES = [
   "font-10-300",
 ] as const;
 
+// globals.css의 iOS 글자 스타일. 등록하지 않으면 tailwind-merge가 글자 색으로 보고 text-labels-* 와 충돌 처리한다
+const IOS_TEXT_STYLES = [
+  "large-title",
+  "title-1",
+  "title-2",
+  "title-3",
+  "headline",
+  "body",
+  "subheadline",
+  "footnote",
+  "caption-1",
+  "caption-2",
+] as const;
+
 const customTwMerge = extendTailwindMerge({
   extend: {
     classGroups: {
-      "font-size": [{ text: CUSTOM_FONT_SIZES }],
+      "font-size": [{ text: [...CUSTOM_FONT_SIZES, ...IOS_TEXT_STYLES] }],
     },
   },
 });

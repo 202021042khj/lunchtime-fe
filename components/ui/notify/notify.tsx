@@ -12,8 +12,6 @@ interface NotifyProps {
 }
 
 const Notify = ({ type = "success", message, testId }: NotifyProps) => {
-  const Icon = getIcon(type);
-
   return (
     <div
       className={cn(
@@ -26,7 +24,7 @@ const Notify = ({ type = "success", message, testId }: NotifyProps) => {
       )}
       data-testid={testId || undefined}
     >
-      <Icon className="shrink-0" />
+      {type === "error" ? <ErrorIcon className="shrink-0" /> : <SuccessIcon className="shrink-0" />}
       <span className="whitespace-nowrap">{message}</span>
     </div>
   );
@@ -35,17 +33,6 @@ const Notify = ({ type = "success", message, testId }: NotifyProps) => {
 const NOTIFY_VARIANTS_MAP: Record<NotifyType, string> = {
   success: "text-primary-main-blue shadow-notify-success",
   error: "text-primary-main-red shadow-notify-error",
-};
-
-const getIcon = (type: NotifyType) => {
-  switch (type) {
-    case "success":
-      return SuccessIcon;
-    case "error":
-      return ErrorIcon;
-    default:
-      return SuccessIcon;
-  }
 };
 
 export default Notify;

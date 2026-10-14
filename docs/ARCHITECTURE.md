@@ -92,7 +92,11 @@ Worked example:
 ## Shared infra layout
 
 - `components/pages/` — page-route folders (`components/pages/<page-name>/`), one per route; see Desktop/Mobile split above.
-- `components/common/` — shared UI primitives (e.g. `Badge.tsx`, `AsyncBoundary`, `DeferredComponent`), domain-agnostic and reusable across pages.
+- `components/common/` — shared UI primitives (e.g. `Badge.tsx`, `AsyncBoundary`, `DeferredComponent`), domain-agnostic and reusable across pages. lunchtime additions: `LogoMark`, `Chip`, `SelectChip`, `FoodImage`, `EmptyState`.
+- `components/layout/` — app chrome shared by every user page: `DesktopTopNav` (tablet+), `MobileTabBar` (mobile). Mounted once in `app/(main)/layout.tsx`, not per page.
+- `components/providers/` — `AppProviders` (overlay-kit's `OverlayProvider`), mounted in the root layout. Open modals with `overlay.open(...)` via a helper exported next to the modal (e.g. `openLocationPicker()`).
+- Shared client state that several pages read (e.g. the current location) lives in a small external store in `lib/` (`lib/locationStore.ts`) read through `useSyncExternalStore` (`hooks/useCurrentLocation.ts`) — no React context needed, and no setState-in-effect for values read from `localStorage`.
+- `components/domain/` — lunchtime components that take domain objects (`Restaurant`, `MenuSummary`, `MenuEvidence`) and are reused across pages: `RestaurantRow`, `RestaurantCard`, `MenuCard`, `MenuEvidenceLine`, `FavoriteButton`. Each maps to a Figma local component (node id noted in the file).
 - `components/ui/` — the design-system primitives (Button, Dialog, AlertDialog, Popover, Tooltip, Command palette, Combobox, Modal/ConfirmModal, Notify/toast, Table/SortableTable, icons, etc.), also domain-agnostic. See "Design system" below.
 - `hooks/` — flat; page-level hooks (`use<PageName>Logic.ts`) and any future cross-page hooks live together.
 - `types/` — one file per domain concept (`types/post.ts`), not per-page.
@@ -113,7 +117,11 @@ Worked example:
 
 ## Theming and dark mode
 
-Dark mode is automatic via the `prefers-color-scheme: dark` media query in `app/globals.css` (no manual toggle, no `next-themes`, no `.dark` class). `:root` defines light values; a `@media (prefers-color-scheme: dark)` block overrides the same variables for dark.
+**lunchtime v1 is light-only.** The Figma design has no dark theme, so the template's `@media (prefers-color-scheme: dark)` override was removed from `app/globals.css` and `:root` sets `color-scheme: light`. When a dark design exists, restore a dark block that overrides the same variables (including the lunchtime tokens below).
+
+lunchtime design tokens live in `app/globals.css` with the same names as the Figma variables (`Brand/Primary` → `--brand-primary` → `bg-brand-primary`; `Labels/Secondary` → `text-labels-secondary`; `Surface/Placeholder` → `bg-surface-placeholder`). iOS text styles are utilities: `text-title-1` … `text-caption-2` (add `font-semibold`/`font-bold` for Emphasized). New iOS text style names must also be registered in `lib/utils.ts` (`IOS_TEXT_STYLES`) or `cn()` will treat them as colors and drop one of the two classes. Icons use `lucide-react` in place of SF Symbols.
+
+(Template note, kept for reference:) The template originally made dark mode automatic via the `prefers-color-scheme: dark` media query (no manual toggle, no `next-themes`, no `.dark` class).
 
 **Always style with the semantic tokens, never hardcoded Tailwind grays**, or the element won't react to theme changes:
 

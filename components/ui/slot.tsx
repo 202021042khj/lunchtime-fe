@@ -38,14 +38,12 @@ const Slot = forwardRef<HTMLElement, SlotProps>(
 
       return isValidElement(newElement)
         ? cloneElement(
-            newElement,
+            newElement as SlotElement,
 
             {
-              ...(mergeProps(slotProps, newElement.props as AnyProps) as any),
+              ...mergeProps(slotProps as AnyProps, newElement.props as AnyProps),
 
-              ref: ref
-                ? composeRefs(ref, (newElement as any).ref)
-                : (newElement as any).ref,
+              ref: ref ? composeRefs(ref, getElementRef(newElement)) : getElementRef(newElement),
             },
 
             newChildren,
@@ -54,12 +52,10 @@ const Slot = forwardRef<HTMLElement, SlotProps>(
     }
 
     if (isValidElement(children)) {
-      return cloneElement(children, {
-        ...(mergeProps(slotProps, children.props as AnyProps) as any),
+      return cloneElement(children as SlotElement, {
+        ...mergeProps(slotProps as AnyProps, children.props as AnyProps),
 
-        ref: ref
-          ? composeRefs(ref, (children as any).ref)
-          : (children as any).ref,
+        ref: ref ? composeRefs(ref, getElementRef(children)) : getElementRef(children),
       });
     }
 
@@ -115,7 +111,14 @@ function composeRefs<T>(...refs: PossibleRef<T>[]) {
   return (node: T) => refs.forEach((ref) => setRef(ref, node));
 }
 
-type AnyProps = Record<string, any>;
+type AnyProps = Record<string, unknown>;
+type Handler = (...args: unknown[]) => void;
+type SlotElement = ReactElement<AnyProps & { ref?: Ref<HTMLElement> }>;
+
+// React 19에서는 ref가 element.ref가 아니라 props.ref에 있다
+function getElementRef(element: ReactElement): PossibleRef<HTMLElement> {
+  return (element.props as { ref?: Ref<HTMLElement> }).ref;
+}
 
 function mergeProps(slotProps: AnyProps, childProps: AnyProps) {
   const overrideProps = { ...childProps };
@@ -130,9 +133,9 @@ function mergeProps(slotProps: AnyProps, childProps: AnyProps) {
     if (isHandler) {
       if (slotPropValue && childPropValue) {
         overrideProps[propName] = (...args: unknown[]) => {
-          childPropValue(...args);
+          (childPropValue as Handler)(...args);
 
-          slotPropValue(...args);
+          (slotPropValue as Handler)(...args);
         };
       } else if (slotPropValue) {
         overrideProps[propName] = slotPropValue;
@@ -140,7 +143,7 @@ function mergeProps(slotProps: AnyProps, childProps: AnyProps) {
     }
 
     if (propName === "style") {
-      overrideProps[propName] = { ...slotPropValue, ...childPropValue };
+      overrideProps[propName] = { ...(slotPropValue as object), ...(childPropValue as object) };
     }
 
     if (propName === "className") {

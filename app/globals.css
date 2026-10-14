@@ -2,8 +2,29 @@
 @import "tw-animate-css";
 
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  /* lunchtime은 v1에서 라이트 전용 (Figma에 다크 디자인 없음) */
+  color-scheme: light;
+
+  --background: #f6f1ea;
+  --foreground: #000000;
+
+  /* lunchtime 디자인 토큰 — Figma 변수와 같은 이름 (Brand/Primary → --brand-primary) */
+  --brand-primary: #b95e34; /* 버튼·링크·매칭 %·핀, 흰 글씨 대비 4.5:1 */
+  --brand-apricot: #f2a477; /* 장식용, 이 색 위에 글자 금지 */
+  --brand-primary-tint: rgba(242, 164, 119, 0.22); /* 선택된 칩, 광고 배지 */
+  --surface-background: #f6f1ea;
+  --surface-placeholder: #e8e2d9;
+  --labels-primary: #000000;
+  --labels-secondary: rgba(60, 60, 67, 0.6);
+  --labels-tertiary: rgba(60, 60, 67, 0.3);
+  --separators-non-opaque: rgba(0, 0, 0, 0.12);
+  --fills-quaternary: rgba(116, 116, 128, 0.08);
+  --chip-border: #d1d1db;
+  --glass-card: rgba(255, 255, 255, 0.72);
+  --glass-sheet: rgba(255, 255, 255, 0.92);
+  --glass-border: rgba(255, 255, 255, 0.85);
+  --accents-green: #34c759;
+  --accents-red: #ff3b30;
 
   /* shadcn-style neutral tokens (added for ported ui components) */
   --popover: #ffffff;
@@ -22,8 +43,63 @@
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+  /* SF Pro 우선, 한글·비 Apple 기기는 시스템 폰트로 대체 */
+  --font-sans: -apple-system, BlinkMacSystemFont, "SF Pro Text", "SF Pro", "Apple SD Gothic Neo",
+    "Pretendard", "Noto Sans KR", "Malgun Gothic", system-ui, sans-serif;
+  --font-mono: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+
+  --color-brand-primary: var(--brand-primary);
+  --color-brand-apricot: var(--brand-apricot);
+  --color-brand-primary-tint: var(--brand-primary-tint);
+  --color-surface-background: var(--surface-background);
+  --color-surface-placeholder: var(--surface-placeholder);
+  --color-labels-primary: var(--labels-primary);
+  --color-labels-secondary: var(--labels-secondary);
+  --color-labels-tertiary: var(--labels-tertiary);
+  --color-separators-non-opaque: var(--separators-non-opaque);
+  --color-fills-quaternary: var(--fills-quaternary);
+  --color-chip-border: var(--chip-border);
+  --color-glass-card: var(--glass-card);
+  --color-glass-sheet: var(--glass-sheet);
+  --color-glass-border: var(--glass-border);
+  --color-accents-green: var(--accents-green);
+  --color-accents-red: var(--accents-red);
+
+  /* 유리 표면 그림자 */
+  --shadow-glass: 0px 8px 16px 0px rgba(64, 38, 20, 0.08);
+
+  /* iOS 27 글자 스타일. Emphasized는 font-semibold(Title1·2는 font-bold)를 함께 쓴다 */
+  --text-large-title: 34px;
+  --text-large-title--line-height: 41px;
+  --text-large-title--letter-spacing: 0.4px;
+  --text-title-1: 28px;
+  --text-title-1--line-height: 34px;
+  --text-title-1--letter-spacing: 0.38px;
+  --text-title-2: 22px;
+  --text-title-2--line-height: 28px;
+  --text-title-2--letter-spacing: -0.26px;
+  --text-title-3: 20px;
+  --text-title-3--line-height: 25px;
+  --text-title-3--letter-spacing: -0.45px;
+  --text-headline: 17px;
+  --text-headline--line-height: 22px;
+  --text-headline--letter-spacing: -0.43px;
+  --text-headline--font-weight: 600;
+  --text-body: 17px;
+  --text-body--line-height: 22px;
+  --text-body--letter-spacing: -0.43px;
+  --text-subheadline: 15px;
+  --text-subheadline--line-height: 20px;
+  --text-subheadline--letter-spacing: -0.23px;
+  --text-footnote: 13px;
+  --text-footnote--line-height: 18px;
+  --text-footnote--letter-spacing: -0.08px;
+  --text-caption-1: 12px;
+  --text-caption-1--line-height: 16px;
+  --text-caption-1--letter-spacing: 0px;
+  --text-caption-2: 11px;
+  --text-caption-2--line-height: 13px;
+  --text-caption-2--letter-spacing: 0.06px;
 
   --color-popover: var(--popover);
   --color-popover-foreground: var(--popover-foreground);
@@ -250,30 +326,12 @@
   }
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    /* mid-gray instead of near-black, for a softer dark surface */
-    --background: #282828;
-    --foreground: #f4f4f5;
-
-    --popover: #282828;
-    --popover-foreground: #fafafa;
-    --primary: #fafafa;
-    --primary-foreground: #262626;
-    --border: #4a4a4a;
-    --input: #4a4a4a;
-    --ring: #8a8a8a;
-    --muted: #4a4a4a;
-    --muted-foreground: #b5b5b5;
-    --accent: #4a4a4a;
-    --accent-foreground: #fafafa;
-  }
-}
+/* 템플릿의 prefers-color-scheme: dark 오버라이드는 제거했다 (v1 라이트 전용). 다크 디자인이 생기면 여기에 다시 둔다 */
 
 body {
   background: var(--background);
   color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  font-family: var(--font-sans);
 }
 
 /* Scrollbar (ported from admin-template src/styles/globals.css) */
