@@ -21,6 +21,7 @@ import {
   MockMenuScore,
   MockRestaurant,
 } from "@/lib/api/mock/data";
+import { createAdminRoutes } from "@/lib/api/mock/adminHandlers";
 import { getMockScenarios } from "@/lib/api/mock/scenario";
 import { ErrorCode, LatLng } from "@/types/common";
 import { Menu } from "@/types/menu";
@@ -774,9 +775,16 @@ const routes: Record<string, Handler> = {
   },
 };
 
+// 어드민 API (상태는 adminHandlers.ts에 따로). 리뷰 삭제만 사용자 쪽 상태를 바꾼다
+const adminRoutes = createAdminRoutes({
+  removeReview: (reviewId) => {
+    state.reviews = state.reviews.filter((r) => r.id !== reviewId);
+  },
+});
+
 function match(method: HttpMethod, path: string): { handler: Handler; params: Record<string, string> } | null {
   const parts = path.split("/").filter(Boolean);
-  for (const [key, handler] of Object.entries(routes)) {
+  for (const [key, handler] of Object.entries({ ...routes, ...adminRoutes })) {
     const [m, pattern] = key.split(" ");
     if (m !== method) continue;
     const segs = pattern.split("/").filter(Boolean);

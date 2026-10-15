@@ -496,3 +496,139 @@ Figma `04 Write Review`(24:480), `11 All Reviews`(36:1523), `11 Report Review`(3
 - 식당 행의 "버튼 안 버튼" 접근성 정리 (홈 · 지도 · 찜 · 검색 공통)
 - 토스트가 아직 템플릿의 파란 스타일
 - 다음: 어드민 화면(A1 유저 · A2 광고 · A3 메뉴 · A4 신고) 또는 2단계 백엔드
+
+
+## 1단계-12 · 어드민 (1/2): 틀 · 어드민 로그인 · 유저 관리 · 리뷰 신고 (2026-10-15)
+
+어드민 4개 화면을 두 번에 나눠 만든다(사용자 선택). 이번에는 틀 · 로그인 · A1 유저 관리(27:834) · A4 리뷰 신고(30:920). 메뉴 관리(A3) · 광고 식당 고정(A2)은 다음 단계.
+
+**결정**
+- 어드민 로그인은 사용자 로그인과 **분리**한다 (plan.md 미결정 → 결정)
+  - `/admin/login`에서 아이디 · 비밀번호 + OTP 6자리로 로그인
+  - 어드민 전용 계정 · 토큰을 쓰고, 사용자 토큰으로는 `/admin/*`을 부를 수 없다
+  - 이유: 운영자의 소셜 계정이 털려도 어드민 권한까지 넘어가지 않게
+- 어드민은 데스크톱 전용이라 화면마다 Desktop/Mobile을 나누지 않고 하나만 둔다
+  - 1024px 미만에서는 사이드바가 위쪽 가로 메뉴가 되고, 표는 가로 스크롤
+
+**만든 것**
+- 어드민 로그인 `/admin/login?next=` (`hooks/useAdminLoginLogic`)
+  - 카드는 사용자 로그인과 같은 스타일(`AuthCard` 재사용, Figma 시안 없음)
+  - OTP는 숫자 6자리만 받는다. 틀리면 "아이디, 비밀번호 또는 OTP가 맞지 않아요"로 어느 칸인지 밝히지 않고, 5번 실패하면 잠긴다
+  - 로그인 후 `next`로 가는데, 어드민 경로만 허용한다
+- 어드민 틀 `app/admin/(console)/layout.tsx` + `components/layout/admin/AdminSidebar`
+  - 들어오면 `GET /admin/me`로 확인하고, 안 되면 로그인 화면으로 보낸다(로딩 중에는 본문을 그리지 않음)
+  - 사이드바 248px: 로고 + ADMIN 배지, 메뉴 4개
+    - 광고 · 메뉴는 "준비 중"으로 막아 둠
+    - 리뷰 신고에는 처리 대기 배지가 붙고 처리하면 바로 줄어든다
+  - 사이드바 아래: 운영자 이름 · "서비스로 가기 ↗" · 로그아웃(확인 창)
+  - `/admin`은 `/admin/users`로 보낸다
+- 유저 관리 `/admin/users?q=&status=&page=` (`hooks/useAdminUsersLogic`)
+  - 요약 4개: 전체 · 이번 주 신규(지난주 대비 %) · 오늘 활성 · 이용 정지
+  - 검색(이름 · 이메일, 300ms 디바운스, 첫 페이지로), 상태 필터(전체 · 정상 · 정지 · 탈퇴)
+  - 표: 유저(이니셜 · 이름 · 가린 이메일) · 로그인 · 가입일 · 최근 접속 · 리뷰 · 찜 · 받은 신고(있으면 빨강) · 상태 배지 · [정지]/[정지 해제]/—
+  - 페이지 넘김: 20명씩 ‹ 1 2 3 … 끝 ›
+  - [정지]는 정지 창(`SuspendUserDialog`)을 연다. 기간(3일 · 7일 · 30일 · 무기한)과 사유(필수, 200자)를 받는다. [정지 해제]는 확인 창
+  - [CSV 내보내기]는 지금 상태 필터 그대로 내려받는다. 엑셀에서 한글이 깨지지 않게 BOM을 붙였다
+- 리뷰 신고 `/admin/reports?status=&id=` (`hooks/useAdminReportsLogic`)
+  - 요약: 처리 대기(빨강) · 오늘 접수 · 이번 달 처리 · 삭제 비율. 탭: 처리 대기 n · 처리 완료 · 전체
+  - 왼쪽 목록: 가장 많은 사유 배지(욕설·비방 빨강 · 광고·홍보 브랜드 · 나머지 회색) · 식당 · 신고 n건 · 접수 시각 / 리뷰 한 줄
+  - 오른쪽 상세(400px)
+    - 사유별 건수, 리뷰 원문(작성자 · 별점 · 식당 · 날짜), 신고자 메모, 작성자 이력(리뷰 · 받은 신고 · 삭제된 리뷰)
+    - "작성자 7일 이용 정지도 함께 처리" 체크: 받은 신고가 3건 이상이면 처음부터 켜져 있다
+    - [신고 기각 (리뷰 유지)] / [리뷰 삭제](빨강 확인 창)
+  - 처리하면 다음 건으로 넘어가고 요약 · 배지가 갱신된다. 처리 완료 건은 버튼 대신 결과를 보여 준다
+- 공용
+  - `components/domain/admin/AdminWidgets`(페이지 머리 · 요약 카드 · 상태 배지 · 페이지 넘김)
+  - `SuspendUserDialog`(`askSuspendUser`), `lib/adminStore`(어드민 로그인 상태 · 배지)
+  - `lib/format`: `formatDotDate`("2026.09.03"), `formatMonthDayTime`("10.08 11:42")
+- API 클라이언트
+  - `request(..., { auth: "admin" })`면 어드민 토큰을 싣고, 사용자 토큰 재발급은 하지 않는다
+  - `text: true`면 CSV 같은 텍스트 응답을 받는다
+  - 어드민 토큰은 `localStorage` `lunchtime.adminAccessToken`(실서버에서는 httpOnly 쿠키 권장)
+
+**목**
+- `lib/api/mock/adminData.ts` · `adminHandlers.ts`: 사용자 쪽 목과 상태를 나눴고, 신고에서 리뷰를 지울 때만 사용자 쪽 리뷰를 함께 지운다
+- 어드민 계정 `admin` / `admin1234` / OTP `123456`. 목일 때만 로그인 화면에 안내
+- 유저 48명: Figma 7명 + 규칙대로 만든 41명. 신고 9건: 처리 대기 7 + 처리 완료 2. "이번 달 처리"에는 예전 처리 건(39건)을 더한다
+
+**API.md 반영 필요** (FE가 정함)
+- 어드민 인증
+  - `POST /admin/auth/login` `{ loginId, password, otp }` → `{ accessToken, refreshToken, admin }`
+  - `POST /admin/auth/logout`, `GET /admin/me` → `{ id, loginId, name }`
+  - 어드민 전용 토큰이고, 사용자 토큰으로 `/admin/*`을 부르면 401. API.md의 "`role: admin` 토큰만" 문구를 이걸로 바꿀 것
+- `GET /admin/users` 응답 한 줄: `id, name, maskedEmail, provider, createdAt, lastActiveAt, reviewCount, favoriteCount, reportCount, status, suspendedUntil`. 목록은 `{ items, total, page, size }`
+- `GET /admin/users/summary`: `{ total, newThisWeek, newWeekChangePercent, activeToday, suspended }`
+- `GET /admin/reports/summary`: `{ pending, today, resolvedThisMonth, deleteRatePercent }`
+- `ReportGroup`에 `status`(pending · resolved) · `resolution`(dismissed · deleted · null) · `lastReportedAt` 추가
+- `export.csv`: 엑셀 호환 BOM은 FE가 붙인다(서버가 붙여도 됨)
+
+**확인한 것**
+- `tsc --noEmit`, `eslint .` 에러 0
+- 1440px 캡처를 Figma 27:834 · 30:920과 비교 (사이드바 · 요약 카드 · 표 열 · 상태 배지 · 신고 목록 · 상세 패널 일치)
+  - 다른 점: 로그인 방식 표기가 Figma는 "구글 · 애플", 앱은 "Google · Apple"(MY와 같은 상수)
+  - 다른 점: 메뉴 · 광고 사이드바 항목은 이번엔 "준비 중"
+- Playwright 45개 동작 모두 통과
+  - 로그인: 비로그인 → 로그인(next 유지) · OTP 숫자만 · 6자리 안내 · 틀린 OTP 같은 안내 · 로그인 → next
+  - 리뷰 신고
+    - 사이드바 배지 7 · 요약 · 목록 7건 · 첫 상세(사유 · 이력 · 정지 기본 체크) · 선택 → `?id=`
+    - 기각 → 6건 · 배지 6
+    - 삭제(확인 창에 정지 안내) → 삭제 · 정지 안내 · 배지 5 · 처리 완료 탭 4건 · 결과 표시
+  - 유저 관리
+    - 20명 · 첫 줄 값 · 정지 / 탈퇴 버튼 · 요약 카드
+    - 3쪽 · 검색(`gmail`, 1쪽으로) · 정지 필터
+    - 정지 해제 → 필터에서 빠짐 · 정지 사유 필수 · 30일 정지 · CSV(파일명 · BOM · 헤더)
+  - 로그아웃 → 토큰 지움 → 다시 들어가면 로그인 요구
+  - 사용자(이메일)로 로그인해도 어드민은 로그인 요구 · 5번 실패 잠금
+- 고친 것: 목 유저 가입일이 지난주에 하나도 없어 "지난주 대비"가 안 나왔다 → 목 데이터 날짜 조정
+- 확인용 dev 서버(3000)와 Chrome은 확인 후 껐다
+
+**남은 것**
+- 다음 단계: 메뉴 관리(A3 29:891 · 메뉴 추가/편집 · CSV 가져오기) · 광고 식당 고정(A2 28:849 · 등록 패널 · 카카오 장소 검색)
+- 어드민 리프레시 토큰 · 세션 만료 처리(실서버 때), 감사 로그 화면은 범위 밖
+
+## 문서 정리 · plan.md · API.md 반영 (2026-10-15)
+
+1단계-1 ~ 1단계-12에서 "API.md 반영 필요"로 적어 둔 것과 화면을 만들며 정한 동작을 두 문서에 옮겼다.
+
+**API.md**
+- 공통 · 권한: 사용자 토큰과 어드민 토큰을 따로 발급한다 (`role: admin` 문구 교체)
+- 인증
+  - 이메일 계정 API 5개(`/auth/email/code` · `verify` · `signup` · `login` · `password-reset`)와 요청 · 응답 · 규칙 표를 추가했다
+  - `provider`에 `email`을 더했고, 로그인 API의 401은 토큰을 재발급하지 않는다
+- 취향 · 위치
+  - `GET /preferences/options` · `GET /ingredients` · `GET /me/locations` · `GET /locations/search` 응답 모양을 적었다
+  - 선택지 값이 곧 표시 이름이고, 알레르기 → 재료 대응은 서버 사전이 가진다
+  - 새 API `POST /preferences/preview`를 추가했다. `spiceLevel`은 건너뛰면 null
+- 추천: 응답 필드를 항상 넣는다(`popularRank` · `suggestRadiusM` 포함). 이유 `type`에 `popular` 추가
+- 식당
+  - `GET /restaurants` 응답에 `menu` 추가. 광고는 `menuId` 검색에서만 붙인다
+  - `GET /me/favorites`에 `lat` · `lng` 추가, 쓰지 않는 `openNow` 쿼리는 뺐다("영업 중" 필터 없음 결정과 맞춤)
+  - `GET /search` 응답 모양과 식당 결과 규칙(메뉴 근거 식당 → 이름 매칭)을 적었다
+- 리뷰: `POST /uploads/review-photos` 요청 · 응답
+- 어드민
+  - "어드민 인증" 절 추가(`/admin/auth/login` · `refresh` · `logout`, `/admin/me`, 토큰 · 실패 · 기록 규칙)
+  - 목록 응답 `{ items, total, page, size }`, 유저 요약 · `AdminUser`, CSV 조건, 신고 요약 · 정렬, 처리 응답
+- 공통 객체: `User.provider`, `SavedLocation.address`, `ReportGroup.status · resolution · lastReportedAt`, `AdminUser`
+- 에러 코드 4개 추가: `EMAIL_TAKEN` · `INVALID_CODE` · `CODE_EXPIRED` · `INVALID_CREDENTIALS`
+- 미결정에 추가: 인증 메일 발송, 계정 합치기, 소셜 토큰 전달 방식, `totalNearbyCount`. Apple 로그인 문장은 "결정"으로 고침
+
+**plan.md**
+- 화면별로 구현하며 정한 동작을 적었다
+  - 홈 모바일 상단: 검색 버튼, 위치 카드 문구
+  - 온보딩: `?step=`, 건너뛰기, 진입점, `next`
+  - 취향 설정: 미리보기 이유, 맵기 해제, 초기화 · 저장, 선택지 목록
+  - 지도: 1km 칩, 다시 검색, 공유 링크
+  - 찜: 되돌리기 · 거리
+  - MY: 점심 알림 기기 저장
+  - 로그인: 이메일 3화면 규칙, `next`, 팝업 대상에 메뉴 제보 추가
+  - 검색 결과: 탭 개수 · 4곳 + 더 보기 · 결과 규칙 · 최근 검색 · 태블릿 · 모바일
+- 어드민
+  - "어드민 로그인" 절 추가
+  - 유저 관리: 정지 기간 · 사유, CSV 조건
+  - 리뷰 신고: 정지 기본값 · 처리 후 동작
+- 반응형: 모바일 상단 버튼 · 탭바 없는 화면, 검색 결과 · 로그인 행 추가, 어드민 좁은 폭 동작
+- 결정된 사항 표에 "로그인" · "어드민 로그인" 행 추가
+- 로그인 절에 채팅 답변 문장이 붙어 있던 3줄(인증번호 123456 · 기본 계정 · 계정 유지)은 "개발용 목 서버(실서비스와 무관)" 한 줄로 정리했다
+
+**코드**
+- 어드민 CSV 내보내기가 상태만 넘기던 것을 검색어도 넘기게 고쳤다(문서와 맞춤). `tsc` · `eslint` 통과

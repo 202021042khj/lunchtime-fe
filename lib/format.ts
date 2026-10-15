@@ -61,3 +61,16 @@ export function withObjectParticle(word: string): string {
 export function joinMeta(parts: (string | null | undefined | false)[]): string {
   return parts.filter(Boolean).join(" · ");
 }
+
+// 어드민 표: "2026.09.03"
+export function formatDotDate(iso: string): string {
+  const d = new Date(iso);
+  return `${d.getFullYear()}.${String(d.getMonth() + 1).padStart(2, "0")}.${String(d.getDate()).padStart(2, "0")}`;
+}
+
+// 어드민 신고 목록: "10.08 11:42"
+export function formatMonthDayTime(iso: string): string {
+  const d = new Date(iso);
+  const pad = (n: number) => String(n).padStart(2, "0");
+  return `${pad(d.getMonth() + 1)}.${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}`;
+}

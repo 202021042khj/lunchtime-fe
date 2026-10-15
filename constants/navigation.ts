@@ -13,6 +13,16 @@ export const ROUTES = {
   passwordReset: "/password-reset",
 } as const;
 
+// 어드민 (사용자 화면과 로그인 · 레이아웃이 따로)
+export const ADMIN_ROUTES = {
+  root: "/admin",
+  login: "/admin/login",
+  users: "/admin/users",
+  sponsored: "/admin/sponsored",
+  menus: "/admin/menus",
+  reports: "/admin/reports",
+} as const;
+
 export const mapRoute = (menuId?: string) => (menuId ? `${ROUTES.map}?menuId=${menuId}` : ROUTES.map);
 
 // 로그인 · 온보딩 뒤 돌아갈 곳을 ?next=로 넘긴다

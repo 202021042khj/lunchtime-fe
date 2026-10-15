@@ -1,6 +1,6 @@
 import { ApiErrorBody, ErrorCode } from "@/types/common";
 import { AuthTokens } from "@/types/user";
-import { clearTokens, getAccessToken, getRefreshToken, saveTokens } from "@/lib/api/token";
+import { clearTokens, getAccessToken, getAdminAccessToken, getRefreshToken, saveTokens } from "@/lib/api/token";
 
 const BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL ?? "https://api.lunchtime.example/v1";
 // 백엔드가 생기기 전까지 기본은 목. 실서버를 쓰려면 NEXT_PUBLIC_API_MOCK=false
@@ -24,6 +24,10 @@ export class ApiError extends Error {
 interface RequestOptions {
   query?: object;
   body?: unknown;
+  // admin: 어드민 토큰을 싣는다 (/admin/*). 사용자 토큰과 섞지 않는다
+  auth?: "user" | "admin";
+  // CSV 내려받기처럼 JSON이 아닌 응답
+  text?: boolean;
 }
 
 // 배열은 콤마로 합치고(excludeMenuIds=m_12,m_7), 빈 값은 뺀다
@@ -40,9 +44,9 @@ export function toSearchParams(query: object = {}): URLSearchParams {
   return params;
 }
 
-async function send(method: HttpMethod, path: string, { query, body }: RequestOptions): Promise<Response> {
+async function send(method: HttpMethod, path: string, { query, body, auth = "user" }: RequestOptions): Promise<Response> {
   const qs = toSearchParams(query).toString();
-  const token = getAccessToken();
+  const token = auth === "admin" ? getAdminAccessToken() : getAccessToken();
   return fetch(`${BASE_URL}${path}${qs ? `?${qs}` : ""}`, {
     method,
     headers: {
@@ -92,10 +96,11 @@ export async function request<T>(method: HttpMethod, path: string, options: Requ
 
   let res = await send(method, path, options);
   // 로그인 API의 401(비밀번호 틀림 등)은 토큰 문제가 아니라서 재발급하지 않는다
-  if (res.status === 401 && !path.startsWith("/auth/") && (await refreshTokens())) {
+  if (res.status === 401 && options.auth !== "admin" && !path.startsWith("/auth/") && (await refreshTokens())) {
     res = await send(method, path, options);
   }
   if (!res.ok) throw await toApiError(res);
   if (res.status === 204) return undefined as T;
+  if (options.text) return (await res.text()) as T;
   return (await res.json()) as T;
 }
