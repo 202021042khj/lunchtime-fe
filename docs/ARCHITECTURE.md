@@ -108,7 +108,7 @@ Worked example:
 `components/ui/` was ported wholesale from an internal Vite/React admin template (shadcn "new-york" style, Radix UI primitives). It brought its own dependencies (`@radix-ui/*`, `cmdk`, `@dnd-kit/*`, `react-toastify`, `react-focus-lock`, `overlay-kit`, `react-error-boundary`, `tw-animate-css`) and its own design tokens, all defined in `app/globals.css` under `@theme`/`:root`:
 
 - A custom color palette (`primary-main-blue`, `gray-100`–`800`, etc.) and a compound font-size scale (`text-font-16-500`, meaning 16px/weight 500 in one utility class) — both ported as-is from the source admin template.
-- A custom `z-*` scale (`z-modal`, `z-dialog`, `z-popover`, ...) and a few named box-shadows (`shadow-pop-over`, `shadow-notify-success`, ...).
+- A custom `z-*` scale (`z-modal`, `z-dialog`, `z-popover`, ...) — defined as `--z-index-*` in `@theme` (Tailwind v4 only generates named z-index utilities from that namespace; the template originally used `--z-*`, which silently produced no classes) — and a few named box-shadows (`shadow-pop-over`, `shadow-notify-success`, ...).
 - shadcn-standard neutral tokens (`background`, `foreground`, `popover`, `border`, `muted`, `accent`, `primary`, `ring`, each with a `-foreground` pair) that the Radix-based components (`dialog.tsx`, `popover.tsx`, `command.tsx`, `table.tsx`, ...) are built on.
 
 `components.json` is present so the shadcn CLI can add more primitives later (`npx shadcn add <name>` — set `aliases.ui` to `@/components/ui`).

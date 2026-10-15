@@ -33,6 +33,30 @@ export function formatRadius(meters: number): string {
   return meters >= 1000 ? `${meters / 1000}km` : `${meters}m`;
 }
 
+const DAY_LABELS: Record<string, string> = { mon: "월", tue: "화", wed: "수", thu: "목", fri: "금", sat: "토", sun: "일" };
+
+// "11:00 ~ 21:00 · 브레이크 15:00~16:30 · 일 휴무"
+export function formatHours(hours: { open: string; close: string; break: [string, string] | null; closedDays: string[] }): string {
+  return joinMeta([
+    `${hours.open} ~ ${hours.close}`,
+    hours.break && `브레이크 ${hours.break[0]}~${hours.break[1]}`,
+    hours.closedDays.length > 0 && `${hours.closedDays.map((d) => DAY_LABELS[d] ?? d).join("·")} 휴무`,
+  ]);
+}
+
+// "10월 2일"
+export function formatMonthDay(iso: string): string {
+  const d = new Date(iso);
+  return `${d.getMonth() + 1}월 ${d.getDate()}일`;
+}
+
+// 받침이 있으면 "을", 없으면 "를" (순두부찌개를, 국밥을)
+export function withObjectParticle(word: string): string {
+  const code = word.charCodeAt(word.length - 1) - 0xac00;
+  if (code < 0 || code > 11171) return `${word}를`;
+  return `${word}${code % 28 ? "을" : "를"}`;
+}
+
 // 빈 값은 빼고 " · "로 잇는다
 export function joinMeta(parts: (string | null | undefined | false)[]): string {
   return parts.filter(Boolean).join(" · ");

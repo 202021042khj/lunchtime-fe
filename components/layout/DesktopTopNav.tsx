@@ -25,9 +25,12 @@ export default function DesktopTopNav() {
     if (q.trim()) router.push(`${ROUTES.search}?q=${encodeURIComponent(q.trim())}`);
   };
 
+  // 지도 화면은 메뉴바가 화면 전체 폭을 쓴다 (Figma 03 Map Top Nav: 좌우 32px)
+  const fluid = pathname.startsWith(ROUTES.map);
+
   return (
     <header className="w-full border-b border-white/70 bg-white/60 backdrop-blur-[20px]">
-      <div className="mx-auto flex h-32 max-w-[1200px] items-center gap-6 px-6 xl:px-0">
+      <div className={cn("flex h-32 items-center gap-6", fluid ? "px-8" : "mx-auto max-w-[1200px] px-6 xl:px-0")}>
         <Link href={ROUTES.home} className="flex shrink-0 items-center gap-2">
           <LogoMark />
           <span className="text-title-3 font-semibold text-labels-primary">lunchtime</span>
@@ -93,9 +96,17 @@ export default function DesktopTopNav() {
         <Link
           href={ROUTES.my}
           aria-label="MY"
-          className={cn("flex size-10 shrink-0 items-center justify-center rounded-full", GLASS_CONTROL)}
+          aria-current={pathname.startsWith(ROUTES.my) ? "page" : undefined}
+          className={cn(
+            "flex size-10 shrink-0 items-center justify-center rounded-full",
+            // MY 화면에서는 브랜드 테두리 (Figma 07 MY Avatar)
+            pathname.startsWith(ROUTES.my) ? "border-2 border-brand-primary bg-brand-primary-tint shadow-[0_2px_8px_rgba(31,26,89,0.06)]" : GLASS_CONTROL,
+          )}
         >
-          <User aria-hidden className="size-4 fill-labels-secondary text-labels-secondary" />
+          <User
+            aria-hidden
+            className={cn("size-4", pathname.startsWith(ROUTES.my) ? "fill-brand-primary text-brand-primary" : "fill-labels-secondary text-labels-secondary")}
+          />
         </Link>
       </div>
     </header>

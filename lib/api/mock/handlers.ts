@@ -2,6 +2,7 @@
 import { ApiError, HttpMethod } from "@/lib/api/client";
 import { distanceM, walkMinutes } from "@/lib/geo";
 import {
+  MOCK_ALLERGENS,
   MOCK_FAVORITES,
   MOCK_HOME,
   MOCK_INGREDIENT_DICTIONARY,
@@ -23,7 +24,7 @@ import {
 import { getMockScenarios } from "@/lib/api/mock/scenario";
 import { ErrorCode, LatLng } from "@/types/common";
 import { Menu } from "@/types/menu";
-import { Preferences, PreferencesInput } from "@/types/preferences";
+import { PreferencePreview, Preferences, PreferencesInput } from "@/types/preferences";
 import {
   AlternativeRecommendation,
   RecommendationReason,
@@ -45,6 +46,7 @@ const state = {
   reviews: structuredClone(MOCK_REVIEWS),
   reviewReports: new Set<string>(), // `${userId}:${reviewId}`
   menuReports: new Set<string>(), // `${userId}:${placeId}:${menuId}`
+  tasteSaved: false, // noTaste 시나리오여도 이번 세션에 저장했으면 저장한 값을 쓴다
   nextId: 1000,
 };
 
@@ -64,7 +66,7 @@ function requireUser(): User {
 }
 
 function currentPreferences(): Preferences | null {
-  if (!currentUser() || getMockScenarios().has("noTaste")) return null;
+  if (!currentUser() || (getMockScenarios().has("noTaste") && !state.tasteSaved)) return null;
   const p = state.preferences;
   const hasTaste = p.dislikedIngredients.length || p.allergies.length || p.spiceLevel !== null || p.favoriteCuisines.length;
   return hasTaste ? p : null;
@@ -167,6 +169,50 @@ function sortRestaurants(list: Restaurant[], sort: RestaurantSort, menu: Menu | 
   return sorted.filter((r) => evidenceTier(r, menu) !== 5 || ++categoryOnly <= 5);
 }
 
+// 역삼(목 식당이 있는 곳)에서 3km 넘게 떨어진 곳을 검색하면 그 주변에 가상 식당을 만든다.
+// 지도를 옮겨 [이 지역에서 다시 검색]하는 흐름을 목으로도 확인하기 위한 것. 좌표를 약 1km 칸으로 반올림해서
+// 같은 곳은 항상 같은 식당이 나온다. 실서버에서는 카카오 로컬 결과가 이 자리를 대신한다
+const generatedSeeds = new Map<string, MockRestaurant>();
+
+function generatedAround(origin: LatLng): MockRestaurant[] {
+  if (distanceM(origin, MOCK_HOME) <= 3000) return [];
+  const cellLat = Math.round(origin.lat * 100) / 100;
+  const cellLng = Math.round(origin.lng * 100) / 100;
+  return MOCK_MENUS.map((menu, i) => {
+    const placeId = `g_${cellLat}_${cellLng}_${i}`;
+    const cached = generatedSeeds.get(placeId);
+    if (cached) return cached;
+    const angle = (i / MOCK_MENUS.length) * 2 * Math.PI;
+    const r = 0.002 + (i % 3) * 0.0015; // 약 200~500m
+    const cuisine = ["일식", "중식", "아시안"].includes(menu.category) ? menu.category : "한식";
+    const seed: MockRestaurant = {
+      placeId,
+      name: `동네 ${menu.kakaoKeyword}집`,
+      category: cuisine,
+      categoryPath: `음식점 > ${cuisine} > ${menu.kakaoCategory}`,
+      cuisine,
+      mainMenu: menu.kakaoKeyword,
+      address: "목 데이터 · 가상 식당",
+      phone: null,
+      lat: cellLat + r * Math.sin(angle),
+      lng: cellLng + r * 1.25 * Math.cos(angle),
+      openNow: null,
+      hours: null,
+      imageUrl: null,
+      kakaoMapUrl: `https://place.map.kakao.com/${placeId}`,
+      sponsored: false,
+      sponsoredMenuIds: [],
+      evidence: { [menu.id]: { type: "name", count: null, verified: false } },
+    };
+    generatedSeeds.set(placeId, seed);
+    return seed;
+  });
+}
+
+function findSeed(placeId: string): MockRestaurant | undefined {
+  return MOCK_RESTAURANTS.find((r) => r.placeId === placeId) ?? generatedSeeds.get(placeId);
+}
+
 function searchRestaurants(
   origin: LatLng,
   opts: { menuId?: string | null; q?: string | null; radiusM?: number; minRating?: number; sort?: RestaurantSort },
@@ -175,7 +221,7 @@ function searchRestaurants(
   const menu = menuById(opts.menuId ?? null);
   const radius = Math.min(opts.radiusM ?? 1000, 3000);
   const q = opts.q?.trim();
-  const list = MOCK_RESTAURANTS
+  const list = [...MOCK_RESTAURANTS, ...generatedAround(origin)]
     .filter((seed) => (menu ? !!seed.evidence[menu.id] : true))
     .filter((seed) => !q || [seed.name, seed.mainMenu ?? "", seed.categoryPath].some((s) => s.includes(q)))
     .map((seed) => toRestaurant(seed, origin, menu?.id ?? null))
@@ -203,6 +249,33 @@ function sortReviews(list: Review[], sort: ReviewSort): Review[] {
 }
 
 // ---------- 추천 ----------
+
+const CUISINE_OF_CATEGORY: Record<string, string> = { 찌개류: "한식", 면류: "한식", 국밥: "한식" };
+
+// 취향 미리보기: 메뉴 재료 · 맵기 · 종류로 대략 점수를 매긴다 (실제 계산은 서버가 정한다)
+function previewTaste(p: Preferences): PreferencePreview {
+  const recommended: PreferencePreview["recommended"] = [];
+  const excluded: PreferencePreview["excluded"] = [];
+  for (const m of MOCK_MENUS) {
+    const menu = { id: m.id, name: m.name, imageUrl: m.imageUrl };
+    const disliked = p.dislikedIngredients.find((i) => m.ingredients.includes(i));
+    const allergy = p.allergies.find((a) => (MOCK_ALLERGENS[a] ?? [a]).some((i) => m.ingredients.includes(i)));
+    const tooSpicy = p.spiceLevel === 0 && m.spiceLevel >= 2;
+    if (disliked || allergy || tooSpicy) {
+      const reason = disliked ?? (allergy ? `${allergy.replace(/ (.*)$/, "")} 알레르기` : "매운맛");
+      excluded.push({ menu, reason });
+      continue;
+    }
+    const cuisine = CUISINE_OF_CATEGORY[m.category] ?? m.category;
+    const popularRank = MOCK_MENU_SCORES.find((s) => s.menuId === m.id)?.popularRank ?? 10;
+    let score = 62 + (10 - popularRank);
+    if (p.favoriteCuisines.length) score += p.favoriteCuisines.includes(cuisine) ? 18 : -6;
+    if (p.spiceLevel !== null) score += 12 - 6 * Math.abs(m.spiceLevel - p.spiceLevel);
+    recommended.push({ menu, matchPercent: Math.max(40, Math.min(98, score)) });
+  }
+  recommended.sort((a, b) => b.matchPercent - a.matchPercent);
+  return { recommended: recommended.slice(0, 3), excluded: excluded.slice(0, 4) };
+}
 
 function rankedScores(personal: boolean, exclude: string[]): MockMenuScore[] {
   return MOCK_MENU_SCORES
@@ -333,10 +406,12 @@ const routes: Record<string, Handler> = {
     const user = requireUser();
     const { completeOnboarding, ...prefs } = body as PreferencesInput;
     state.preferences = prefs;
+    state.tasteSaved = true;
     if (completeOnboarding) user.onboardingCompleted = true;
     return prefs;
   },
   "GET /preferences/options": () => MOCK_PREFERENCE_OPTIONS,
+  "POST /preferences/preview": ({ body }) => previewTaste(body as Preferences),
   "GET /ingredients": ({ query }) => {
     const q = query.get("q")?.trim() ?? "";
     return { items: q ? MOCK_INGREDIENT_DICTIONARY.filter((i) => i.includes(q)) : [] };
@@ -398,10 +473,15 @@ const routes: Record<string, Handler> = {
       minRating: query.get("minRating") ? Number(query.get("minRating")) : undefined,
       sort: (query.get("sort") as RestaurantSort | null) ?? "distance",
     });
-    return { ...paginate(items, query), total: items.length };
+    const menu = menuById(query.get("menuId"));
+    return {
+      ...paginate(items, query),
+      total: items.length,
+      menu: menu ? { id: menu.id, name: menu.name, keyword: menu.kakaoKeyword } : null,
+    };
   },
   "GET /restaurants/:placeId": ({ params }): RestaurantDetail => {
-    const seed = MOCK_RESTAURANTS.find((r) => r.placeId === params.placeId) ?? fail(404, "NOT_FOUND", "식당을 찾을 수 없어요.");
+    const seed = findSeed(params.placeId) ?? fail(404, "NOT_FOUND", "식당을 찾을 수 없어요.");
     const reviews = activeReviews(seed.placeId);
     const ratingSummary: RatingSummary = { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0 };
     for (const r of reviews) ratingSummary[r.rating as keyof RatingSummary] += 1;
@@ -415,11 +495,12 @@ const routes: Record<string, Handler> = {
     requireUser();
     if (getMockScenarios().has("noFavorites")) return { items: [], nextCursor: null };
     const cuisine = query.get("cuisine");
+    const origin = query.get("lat") && query.get("lng") ? requireCoord(query) : MOCK_HOME;
     const items = [...state.favorites]
       .sort((a, b) => b.favoritedAt.localeCompare(a.favoritedAt))
-      .map((f) => MOCK_RESTAURANTS.find((r) => r.placeId === f.placeId)!)
+      .map((f) => findSeed(f.placeId)!)
       .filter((seed) => !cuisine || cuisine === "전체" || seed.cuisine === cuisine)
-      .map((seed) => toRestaurant(seed, MOCK_HOME, null));
+      .map((seed) => toRestaurant(seed, origin, null));
     return paginate(items, query);
   },
   "PUT /me/favorites/:placeId": ({ params }) => {
@@ -446,7 +527,7 @@ const routes: Record<string, Handler> = {
     return paginate(sortReviews(activeReviews(params.placeId), sort).map(withIsMine), query);
   },
   "GET /restaurants/:placeId/review-form": ({ params }) => {
-    const seed = MOCK_RESTAURANTS.find((r) => r.placeId === params.placeId) ?? fail(404, "NOT_FOUND", "식당을 찾을 수 없어요.");
+    const seed = findSeed(params.placeId) ?? fail(404, "NOT_FOUND", "식당을 찾을 수 없어요.");
     const fromMaster = MOCK_MENUS.filter((m) => seed.categoryPath.includes(m.kakaoCategory)).map((m) => m.kakaoKeyword);
     const fromReviews = activeReviews(seed.placeId).flatMap((r) => r.menus);
     const menus = [...new Set([seed.mainMenu, ...fromReviews, ...fromMaster].filter((m): m is string => !!m))];
@@ -462,7 +543,7 @@ const routes: Record<string, Handler> = {
     const user = requireUser();
     const input = body as ReviewInput;
     validateReview(input);
-    const seed = MOCK_RESTAURANTS.find((r) => r.placeId === params.placeId) ?? fail(404, "NOT_FOUND", "식당을 찾을 수 없어요.");
+    const seed = findSeed(params.placeId) ?? fail(404, "NOT_FOUND", "식당을 찾을 수 없어요.");
     const today = todayKst();
     if (state.reviews.some((r) => r.author.id === user.id && r.placeId === seed.placeId && r.createdAt.startsWith(today))) {
       fail(409, "REVIEW_DAILY_LIMIT", "이 식당에는 오늘 이미 리뷰를 썼어요.");

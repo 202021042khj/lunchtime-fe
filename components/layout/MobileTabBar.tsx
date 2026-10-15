@@ -17,6 +17,8 @@ const TABS: { href: string; label: string; icon: LucideIcon; filled: boolean }[]
 // Figma: Tab Bar - iPhone (9:275). 하단 고정 유리 탭바, 웹뷰에서는 홈 인디케이터 영역을 피한다
 export default function MobileTabBar() {
   const pathname = usePathname();
+  // 취향 설정은 [저장하기] 바를 하단에 고정하므로 탭바를 숨긴다
+  if (pathname.startsWith(ROUTES.taste)) return null;
 
   return (
     <nav className="fixed inset-x-0 bottom-0 z-header px-6 pb-[calc(env(safe-area-inset-bottom)+12px)]">

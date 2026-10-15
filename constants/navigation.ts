@@ -1,11 +1,13 @@
-// 사용자 화면 경로. 아직 만들지 않은 화면도 미리 정의해 둔다 (지도·찜·취향·MY·검색은 다음 단계)
+// 사용자 화면 경로. 아직 만들지 않은 화면도 미리 정의해 둔다 (검색 · 로그인은 아직 없음)
 export const ROUTES = {
   home: "/",
   map: "/map",
   favorites: "/favorites",
   taste: "/taste",
+  onboarding: "/onboarding",
   my: "/my",
   search: "/search",
+  login: "/login",
 } as const;
 
 export const mapRoute = (menuId?: string) => (menuId ? `${ROUTES.map}?menuId=${menuId}` : ROUTES.map);

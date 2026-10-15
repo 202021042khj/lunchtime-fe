@@ -290,22 +290,23 @@
   --text-font-10-300--letter-spacing: normal;
   --text-font-10-300--font-weight: 300;
 
-  /* z-index scale (ported from admin-template tailwind.config.ts) */
-  --z-base: 10;
-  --z-table: 10;
-  --z-footer: 10;
-  --z-middle: 20;
-  --z-header: 20;
-  --z-calendar: 20;
-  --z-serviceTab: 30;
-  --z-modal: 50;
-  --z-tooltip: 50;
-  --z-dialog: 50;
-  --z-dropdown: 50;
-  --z-popover: 50;
-  --z-select: 50;
-  --z-hoverCard: 100;
-  --z-toast: 100;
+  /* z-index scale (ported from admin-template tailwind.config.ts).
+     Tailwind v4 reads named z-index utilities (z-dialog, z-popover, …) from --z-index-*, not --z-* */
+  --z-index-base: 10;
+  --z-index-table: 10;
+  --z-index-footer: 10;
+  --z-index-middle: 20;
+  --z-index-header: 20;
+  --z-index-calendar: 20;
+  --z-index-serviceTab: 30;
+  --z-index-modal: 50;
+  --z-index-tooltip: 50;
+  --z-index-dialog: 50;
+  --z-index-dropdown: 50;
+  --z-index-popover: 50;
+  --z-index-select: 50;
+  --z-index-hoverCard: 100;
+  --z-index-toast: 100;
 
   /* box shadows (ported from admin-template tailwind.config.ts) */
   --shadow-notify-success: 0px 2px 8px 0px rgba(164, 192, 255, 0.6);

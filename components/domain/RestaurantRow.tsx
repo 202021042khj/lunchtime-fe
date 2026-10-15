@@ -23,13 +23,16 @@ export default function RestaurantRow({ restaurant, onSelect, onToggleFavorite, 
   return (
     <div
       role={onSelect ? "button" : undefined}
+      aria-pressed={onSelect ? selected : undefined}
       tabIndex={onSelect ? 0 : undefined}
       onClick={onSelect && (() => onSelect(r))}
       onKeyDown={onSelect && ((e) => (e.key === "Enter" || e.key === " ") && (e.preventDefault(), onSelect(r)))}
       className={cn(
         "flex w-full items-center gap-3 rounded-[18px] p-3 text-left",
-        onSelect && "cursor-pointer hover:bg-white/60",
-        selected && "bg-white/80",
+        onSelect && "cursor-pointer",
+        onSelect && !selected && "hover:bg-white/60",
+        // Figma 03 Map: Restaurant Row · Selected
+        selected && "bg-brand-primary-tint",
         className,
       )}
     >

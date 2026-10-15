@@ -62,13 +62,24 @@ export interface RestaurantQuery {
   limit?: number;
 }
 
+// menuId로 검색했을 때 목록 머리말에 쓰는 메뉴 정보 (API.md에 없어 FE가 추가)
+export interface SearchedMenu {
+  id: string;
+  name: string; // 얼큰 순두부찌개
+  keyword: string; // 순두부찌개 (필터 칩, 근거 문구)
+}
+
 export interface RestaurantListResponse {
   items: Restaurant[];
   total: number;
   nextCursor: string | null;
+  menu: SearchedMenu | null;
 }
 
 export interface FavoritesQuery {
+  // 거리 계산 기준 (API.md에 없어 FE가 추가)
+  lat?: number;
+  lng?: number;
   cuisine?: string;
   sort?: "recent";
   cursor?: string;

@@ -7,9 +7,8 @@ import { notify } from "@/components/ui/notify/notify-utils";
 import { DEFAULT_RADIUS_M, EXPANDED_RADIUS_M } from "@/constants/recommendation";
 import { mapRoute, ROUTES } from "@/constants/navigation";
 import { useCurrentLocation } from "@/hooks/useCurrentLocation";
-import { ApiError } from "@/lib/api/client";
+import { useFavoriteToggle } from "@/hooks/useFavoriteToggle";
 import { getRecommendations } from "@/lib/api/recommendations";
-import { addFavorite, removeFavorite } from "@/lib/api/restaurants";
 import { CurrentLocation, LocationStatus, locateCurrentPosition } from "@/lib/locationStore";
 import { RecommendationResponse } from "@/types/recommendation";
 import { Restaurant } from "@/types/restaurant";
@@ -46,7 +45,7 @@ export function useHomeLogic(): UseHomeLogicResult {
   const [excludeMenuIds, setExcludeMenuIds] = useState<string[]>([]);
   const [retryCount, setRetryCount] = useState(0);
   const [result, setResult] = useState<FetchResult>({ key: "" });
-  const [favoriteOverrides, setFavoriteOverrides] = useState<Record<string, boolean>>({});
+  const { applyFavorite, toggleFavorite } = useFavoriteToggle();
   const [bannerDismissed, setBannerDismissed] = useState(false);
 
   const requestKey = location ? JSON.stringify([location.lat, location.lng, radiusM, excludeMenuIds, retryCount]) : "";
@@ -78,25 +77,12 @@ export function useHomeLogic(): UseHomeLogicResult {
   const settled = result.key === requestKey;
   const status = !settled ? "loading" : result.failed ? "error" : "ready";
 
-  // 찜 토글은 바로 화면에 반영하고, 실패하면 되돌린다
+  // 찜 토글을 바로 반영한 추천 결과
   const reco = useMemo(() => {
     const data = result.data;
     if (!data?.today) return data ?? null;
-    const apply = (r: Restaurant) => (r.placeId in favoriteOverrides ? { ...r, isFavorite: favoriteOverrides[r.placeId] } : r);
-    return { ...data, today: { ...data.today, restaurants: data.today.restaurants.map(apply) } };
-  }, [result.data, favoriteOverrides]);
-
-  const toggleFavorite = async (restaurant: Restaurant) => {
-    const next = !restaurant.isFavorite;
-    setFavoriteOverrides((o) => ({ ...o, [restaurant.placeId]: next }));
-    try {
-      await (next ? addFavorite(restaurant.placeId) : removeFavorite(restaurant.placeId));
-    } catch (error) {
-      setFavoriteOverrides((o) => ({ ...o, [restaurant.placeId]: !next }));
-      // 로그인 필요 팝업(09 Login Required)은 로그인 단계에서 붙인다
-      notify.error(error instanceof ApiError && error.code === "UNAUTHORIZED" ? "찜하려면 로그인이 필요해요." : "찜하지 못했어요.");
-    }
-  };
+    return { ...data, today: { ...data.today, restaurants: data.today.restaurants.map(applyFavorite) } };
+  }, [result.data, applyFavorite]);
 
   const shuffle = () => {
     const todayId = result.data?.today?.menu.id;
@@ -122,7 +108,8 @@ export function useHomeLogic(): UseHomeLogicResult {
     retry: () => setRetryCount((n) => n + 1),
     toggleFavorite,
     goToMap: (menuId) => router.push(mapRoute(menuId)),
-    goToTaste: () => router.push(ROUTES.taste),
+    // 취향 배너는 온보딩으로 (기능명세 5)
+    goToTaste: () => router.push(ROUTES.onboarding),
     openLocationPicker,
     requestLocationPermission,
   };
