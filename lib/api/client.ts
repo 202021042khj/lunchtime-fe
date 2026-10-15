@@ -4,7 +4,7 @@ import { clearTokens, getAccessToken, getRefreshToken, saveTokens } from "@/lib/
 
 const BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL ?? "https://api.lunchtime.example/v1";
 // 백엔드가 생기기 전까지 기본은 목. 실서버를 쓰려면 NEXT_PUBLIC_API_MOCK=false
-const USE_MOCK = process.env.NEXT_PUBLIC_API_MOCK !== "false";
+export const USE_MOCK = process.env.NEXT_PUBLIC_API_MOCK !== "false";
 
 export type HttpMethod = "GET" | "POST" | "PUT" | "PATCH" | "DELETE";
 
@@ -91,7 +91,8 @@ export async function request<T>(method: HttpMethod, path: string, options: Requ
   }
 
   let res = await send(method, path, options);
-  if (res.status === 401 && (await refreshTokens())) {
+  // 로그인 API의 401(비밀번호 틀림 등)은 토큰 문제가 아니라서 재발급하지 않는다
+  if (res.status === 401 && !path.startsWith("/auth/") && (await refreshTokens())) {
     res = await send(method, path, options);
   }
   if (!res.ok) throw await toApiError(res);

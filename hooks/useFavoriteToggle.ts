@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useState } from "react";
+import { openLoginRequired, requireLogin } from "@/components/domain/LoginRequiredModal";
 import { notify } from "@/components/ui/notify/notify-utils";
 import { ApiError } from "@/lib/api/client";
 import { addFavorite, removeFavorite } from "@/lib/api/restaurants";
@@ -20,14 +21,15 @@ export function useFavoriteToggle() {
   );
 
   const toggleFavorite = async (item: Favoritable) => {
+    if (!requireLogin("favorite")) return;
     const next = !item.isFavorite;
     setOverrides((o) => ({ ...o, [item.placeId]: next }));
     try {
       await (next ? addFavorite(item.placeId) : removeFavorite(item.placeId));
     } catch (error) {
       setOverrides((o) => ({ ...o, [item.placeId]: !next }));
-      // 로그인 필요 팝업(09 Login Required)은 로그인 단계에서 붙인다
-      notify.error(error instanceof ApiError && error.code === "UNAUTHORIZED" ? "찜하려면 로그인이 필요해요." : "찜하지 못했어요.");
+      if (error instanceof ApiError && error.code === "UNAUTHORIZED") openLoginRequired("favorite");
+      else notify.error("찜하지 못했어요.");
     }
   };
 

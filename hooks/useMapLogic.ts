@@ -3,6 +3,7 @@
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
 import { openLocationPicker } from "@/components/domain/LocationPickerModal";
+import { openLoginRequired, requireLogin } from "@/components/domain/LoginRequiredModal";
 import { openReportReview } from "@/components/domain/ReportReviewModal";
 import { openWriteReview } from "@/components/domain/WriteReviewModal";
 import { notify } from "@/components/ui/notify/notify-utils";
@@ -229,22 +230,23 @@ export function useMapLogic(): UseMapLogicResult {
 
   const share = (restaurant: Restaurant) => shareLink(restaurant.name, { placeId: restaurant.placeId });
 
-  const writeReview = (restaurant: Restaurant) =>
+  const writeReview = (restaurant: Restaurant) => {
+    if (!requireLogin("review")) return;
     openWriteReview(restaurant, ({ placeStats }) => {
       setStatsOverrides((o) => ({ ...o, [restaurant.placeId]: placeStats }));
       setReviewsVersion((v) => v + 1);
     });
+  };
 
   const reportMenu = async (restaurant: Restaurant) => {
-    if (!menuId) return;
+    if (!menuId || !requireLogin("menuReport")) return;
     try {
       await reportMenuNotSold(restaurant.placeId, menuId);
       notify.success("제보해 주셔서 고마워요. 확인 후 반영할게요.");
     } catch (error) {
       const code = error instanceof ApiError ? error.code : null;
-      notify.error(
-        code === "ALREADY_REPORTED_MENU" ? "이미 제보한 식당이에요." : code === "UNAUTHORIZED" ? "제보하려면 로그인이 필요해요." : "제보하지 못했어요.",
-      );
+      if (code === "UNAUTHORIZED") return openLoginRequired("menuReport");
+      notify.error(code === "ALREADY_REPORTED_MENU" ? "이미 제보한 식당이에요." : "제보하지 못했어요.");
     }
   };
 
@@ -295,7 +297,9 @@ export function useMapLogic(): UseMapLogicResult {
     closeReviews: () => setParams({ view: null }),
     writeReview,
     shareReview: (review) => shareLink(`${review.placeName} 리뷰`, { placeId: review.placeId, view: "reviews" }),
-    reportReview: openReportReview,
+    reportReview: (review: Review) => {
+      if (requireLogin("report")) openReportReview(review);
+    },
     reportMenu,
     expandRadius: () => setFilters((f) => ({ ...f, within1km: false })),
     goHome: () => router.push(ROUTES.home),

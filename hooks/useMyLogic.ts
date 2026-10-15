@@ -13,6 +13,7 @@ import { ApiError } from "@/lib/api/client";
 import { getMyPreferences } from "@/lib/api/preferences";
 import { deleteReview, getMyReviews } from "@/lib/api/reviews";
 import { getLunchAlert, getLunchAlertServer, setLunchAlert, subscribeLunchAlert } from "@/lib/lunchAlertStore";
+import { markGuest } from "@/lib/sessionStore";
 import { hasTaste } from "@/lib/taste";
 import { Preferences } from "@/types/preferences";
 import { Review } from "@/types/review";
@@ -113,6 +114,7 @@ export function useMyLogic(): UseMyLogicResult {
     if (!ok) return;
     try {
       await logout();
+      markGuest();
       notify.success("로그아웃했어요.");
       router.push(ROUTES.home);
     } catch {
@@ -130,6 +132,7 @@ export function useMyLogic(): UseMyLogicResult {
     if (!ok) return;
     try {
       await withdraw();
+      markGuest();
       notify.success("탈퇴했어요. 그동안 고마웠어요.");
       router.push(ROUTES.home);
     } catch {

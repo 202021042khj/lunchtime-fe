@@ -1,4 +1,4 @@
-import { AlertTriangle, SlidersHorizontal } from "lucide-react";
+import { AlertTriangle, Search, SlidersHorizontal } from "lucide-react";
 import Link from "next/link";
 import LogoMark from "@/components/common/LogoMark";
 import { ROUTES } from "@/constants/navigation";
@@ -11,7 +11,11 @@ interface MobileHeaderSectionProps {
   weather: Weather | null | undefined;
 }
 
-// Figma: 01 Home 모바일 Header (9:519) — 로고, 그 아래 날씨 한 줄, 오른쪽 취향 설정 버튼
+const ROUND_BUTTON =
+  "flex size-12 items-center justify-center rounded-full border border-white/90 bg-white/60 shadow-[0_2px_8px_rgba(31,26,89,0.06)]";
+
+// Figma: 01 Home 모바일 Header (9:519) — 로고, 그 아래 날씨 한 줄, 오른쪽 취향 설정 버튼.
+// 검색 버튼은 시안 외 추가 (모바일에는 메뉴바 검색창이 없어서)
 export default function MobileHeaderSection({ weather }: MobileHeaderSectionProps) {
   const WeatherIcon = weather ? WEATHER_ICONS[weather.condition] : AlertTriangle;
 
@@ -29,13 +33,14 @@ export default function MobileHeaderSection({ weather }: MobileHeaderSectionProp
           </p>
         )}
       </div>
-      <Link
-        href={ROUTES.taste}
-        aria-label="취향 설정"
-        className="flex size-12 items-center justify-center rounded-full border border-white/90 bg-white/60 shadow-[0_2px_8px_rgba(31,26,89,0.06)]"
-      >
-        <SlidersHorizontal aria-hidden className="size-5 text-labels-primary" />
-      </Link>
+      <div className="flex items-center gap-2">
+        <Link href={ROUTES.search} aria-label="검색" className={ROUND_BUTTON}>
+          <Search aria-hidden className="size-5 text-labels-primary" />
+        </Link>
+        <Link href={ROUTES.taste} aria-label="취향 설정" className={ROUND_BUTTON}>
+          <SlidersHorizontal aria-hidden className="size-5 text-labels-primary" />
+        </Link>
+      </div>
     </header>
   );
 }

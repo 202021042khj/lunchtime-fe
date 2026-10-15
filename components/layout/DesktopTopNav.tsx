@@ -2,9 +2,9 @@
 
 import { ChevronDown, Navigation, Search, SlidersHorizontal, User } from "lucide-react";
 import Link from "next/link";
-import { usePathname, useRouter } from "next/navigation";
-import { FormEvent, useState } from "react";
+import { usePathname } from "next/navigation";
 import LogoMark from "@/components/common/LogoMark";
+import NavSearchField from "@/components/layout/NavSearchField";
 import { openLocationPicker } from "@/components/domain/LocationPickerModal";
 import { DESKTOP_NAV_ITEMS, ROUTES } from "@/constants/navigation";
 import { useCurrentLocation } from "@/hooks/useCurrentLocation";
@@ -16,15 +16,7 @@ const GLASS_CONTROL =
 // Figma: 01 Home · Desktop Top Nav (12:172). 태블릿(768~1023px)은 검색창을 아이콘으로 줄인다
 export default function DesktopTopNav() {
   const pathname = usePathname();
-  const router = useRouter();
   const { location } = useCurrentLocation();
-  const [q, setQ] = useState("");
-
-  const submitSearch = (e: FormEvent) => {
-    e.preventDefault();
-    if (q.trim()) router.push(`${ROUTES.search}?q=${encodeURIComponent(q.trim())}`);
-  };
-
   // 지도 화면은 메뉴바가 화면 전체 폭을 쓴다 (Figma 03 Map Top Nav: 좌우 32px)
   const fluid = pathname.startsWith(ROUTES.map);
 
@@ -57,16 +49,9 @@ export default function DesktopTopNav() {
 
         <div className="flex-1" />
 
-        <form onSubmit={submitSearch} className={cn("hidden h-[38px] w-[300px] items-center gap-2 rounded-full px-3.5 lg:flex", GLASS_CONTROL)}>
-          <Search aria-hidden className="size-4 shrink-0 text-labels-secondary" />
-          <input
-            value={q}
-            onChange={(e) => setQ(e.target.value)}
-            placeholder="메뉴, 식당 검색"
-            aria-label="메뉴, 식당 검색"
-            className="min-w-0 flex-1 bg-transparent text-subheadline text-labels-primary outline-none placeholder:text-labels-tertiary"
-          />
-        </form>
+        <div className="hidden lg:block">
+          <NavSearchField />
+        </div>
         <Link
           href={ROUTES.search}
           aria-label="검색"

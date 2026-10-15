@@ -8,9 +8,19 @@ export const ROUTES = {
   my: "/my",
   search: "/search",
   login: "/login",
+  emailLogin: "/login/email",
+  signup: "/signup",
+  passwordReset: "/password-reset",
 } as const;
 
 export const mapRoute = (menuId?: string) => (menuId ? `${ROUTES.map}?menuId=${menuId}` : ROUTES.map);
+
+// 로그인 · 온보딩 뒤 돌아갈 곳을 ?next=로 넘긴다
+export const withNext = (route: string, next?: string | null) =>
+  next && next !== ROUTES.home ? `${route}?next=${encodeURIComponent(next)}` : route;
+
+// 앱 안 경로만 허용 (다른 사이트로 보내는 링크 방지)
+export const safeNext = (raw: string | null) => (raw && raw.startsWith("/") && !raw.startsWith("//") ? raw : ROUTES.home);
 
 // 데스크톱 상단 메뉴바
 export const DESKTOP_NAV_ITEMS = [
@@ -18,3 +28,7 @@ export const DESKTOP_NAV_ITEMS = [
   { href: ROUTES.map, label: "지도" },
   { href: ROUTES.favorites, label: "찜한 식당" },
 ] as const;
+
+// 로그인 · 가입 뒤 갈 곳: 온보딩 전이면 온보딩(끝나면 next로), 아니면 next
+export const afterLoginRoute = (onboardingCompleted: boolean, next: string) =>
+  onboardingCompleted ? next : withNext(ROUTES.onboarding, next);

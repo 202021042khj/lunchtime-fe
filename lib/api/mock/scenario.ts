@@ -7,7 +7,8 @@ export type MockScenario =
   | "noWeather" // 날씨 조회 실패 → weather: null
   | "noRestaurants" // 근처 식당 0곳 → today: null, suggestRadiusM: 3000
   | "noFavorites" // 찜 없음
-  | "noReviews"; // 내 리뷰 없음
+  | "noReviews" // 내 리뷰 없음
+  | "newUser"; // 로그인하면 처음 가입한 사용자로 → 온보딩
 
 const STORAGE_KEY = "lunchtime.mockScenario";
 

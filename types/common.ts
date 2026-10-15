@@ -29,7 +29,11 @@ export type ErrorCode =
   | "OUT_OF_SERVICE_AREA"
   | "RATE_LIMITED"
   | "UPSTREAM_UNAVAILABLE"
-  | "LOCATION_REQUIRED";
+  | "LOCATION_REQUIRED"
+  | "EMAIL_TAKEN"
+  | "INVALID_CODE"
+  | "CODE_EXPIRED"
+  | "INVALID_CREDENTIALS";
 
 export interface ApiErrorBody {
   error: {

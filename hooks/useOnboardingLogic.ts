@@ -2,8 +2,9 @@
 
 import { useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useState } from "react";
+import { openLoginRequired } from "@/components/domain/LoginRequiredModal";
 import { notify } from "@/components/ui/notify/notify-utils";
-import { ROUTES } from "@/constants/navigation";
+import { ROUTES, safeNext } from "@/constants/navigation";
 import { EMPTY_PREFERENCES, TasteForm, useTasteForm } from "@/hooks/useTasteForm";
 import { ApiError } from "@/lib/api/client";
 import { getMyPreferences, saveMyPreferences } from "@/lib/api/preferences";
@@ -33,6 +34,8 @@ export function useOnboardingLogic(): UseOnboardingLogicResult {
   const router = useRouter();
   const searchParams = useSearchParams();
   const total = ONBOARDING_STEPS.length;
+  // 로그인 직후 온보딩이면 끝나고 원래 보던 화면(?next=)으로 돌아간다
+  const nextParam = searchParams.get("next");
   const step = Math.min(Math.max(Number(searchParams.get("step")) || 1, 1), total);
   const form = useTasteForm();
   const { reset: resetForm } = form;
@@ -49,21 +52,22 @@ export function useOnboardingLogic(): UseOnboardingLogicResult {
     };
   }, [resetForm]);
 
-  const goTo = (n: number) => router.push(`${ROUTES.onboarding}?step=${n}`);
+  const stepUrl = (n: number) => {
+    const params = new URLSearchParams({ step: String(n) });
+    if (nextParam) params.set("next", nextParam);
+    return `${ROUTES.onboarding}?${params}`;
+  };
+  const goTo = (n: number) => router.push(stepUrl(n));
 
   const submit = async (prefs: Preferences) => {
     setSaving(true);
     try {
       await saveMyPreferences({ ...prefs, completeOnboarding: true });
-      router.replace(ROUTES.home);
+      router.replace(safeNext(nextParam));
     } catch (error) {
       setSaving(false);
-      if (error instanceof ApiError && error.code === "UNAUTHORIZED") {
-        notify.error("취향을 저장하려면 로그인이 필요해요.");
-        router.push(ROUTES.login);
-      } else {
-        notify.error("저장하지 못했어요. 다시 시도해 주세요.");
-      }
+      if (error instanceof ApiError && error.code === "UNAUTHORIZED") openLoginRequired("taste");
+      else notify.error("저장하지 못했어요. 다시 시도해 주세요.");
     }
   };
 
@@ -73,7 +77,7 @@ export function useOnboardingLogic(): UseOnboardingLogicResult {
     form,
     saving,
     next: () => goTo(step + 1),
-    prev: () => (step > 1 ? router.replace(`${ROUTES.onboarding}?step=${step - 1}`) : undefined),
+    prev: () => (step > 1 ? router.replace(stepUrl(step - 1)) : undefined),
     // 건너뛰기: 이 질문은 고르지 않은 것으로 하고 다음으로
     skip: () => {
       form.clearField(ONBOARDING_STEPS[step - 1].field);

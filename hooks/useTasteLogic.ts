@@ -2,6 +2,7 @@
 
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
+import { openLoginRequired } from "@/components/domain/LoginRequiredModal";
 import { notify } from "@/components/ui/notify/notify-utils";
 import { ROUTES } from "@/constants/navigation";
 import { EMPTY_PREFERENCES, TasteForm, useTasteForm } from "@/hooks/useTasteForm";
@@ -81,7 +82,8 @@ export function useTasteLogic(): UseTasteLogicResult {
       else router.push(ROUTES.home);
     } catch (error) {
       setSaving(false);
-      notify.error(error instanceof ApiError && error.code === "UNAUTHORIZED" ? "저장하려면 로그인이 필요해요." : "저장하지 못했어요. 다시 시도해 주세요.");
+      if (error instanceof ApiError && error.code === "UNAUTHORIZED") openLoginRequired("taste");
+      else notify.error("저장하지 못했어요. 다시 시도해 주세요.");
     }
   };
 

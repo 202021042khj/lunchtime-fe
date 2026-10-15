@@ -33,12 +33,20 @@ import {
 } from "@/types/recommendation";
 import { MenuEvidence, RatingSummary, Restaurant, RestaurantDetail, RestaurantSort } from "@/types/restaurant";
 import { ReportReason, Review, ReviewInput, ReviewSort } from "@/types/review";
-import { User } from "@/types/user";
+import {
+  EmailCodeRequest,
+  EmailLoginRequest,
+  EmailSignupRequest,
+  EmailVerifyRequest,
+  LoginRequest,
+  PasswordResetRequest,
+  User,
+} from "@/types/user";
+import { checkEmail, checkName, checkPassword, normalizeEmail } from "@/lib/validation";
 
 const DELAY_MS = 250;
 
 const state = {
-  loggedOut: false,
   user: structuredClone(MOCK_USER),
   preferences: structuredClone(MOCK_PREFERENCES),
   savedLocations: structuredClone(MOCK_SAVED_LOCATIONS),
@@ -56,9 +64,101 @@ function fail(status: number, code: ErrorCode, message: string, fields?: Record<
   throw new ApiError(status, code, message, fields);
 }
 
+// 로그인 · 로그아웃은 새로고침해도 남도록 기기에 적어 둔다 ("in" · "out", 없으면 시나리오대로)
+const AUTH_KEY = "lunchtime.mockAuth";
+
+function storedAuth(): string | null {
+  try {
+    return window.localStorage.getItem(AUTH_KEY);
+  } catch {
+    return null;
+  }
+}
+
+function setStoredAuth(value: "in" | "out"): void {
+  try {
+    window.localStorage.setItem(AUTH_KEY, value);
+  } catch {
+    // 저장 못 하면 이번 세션만
+  }
+}
+
+// ---------- 이메일 계정 (목) ----------
+// 가입한 계정은 새로 고쳐도 남도록 기기에 둔다. 인증번호는 항상 MOCK_EMAIL_CODE
+interface MockAccount {
+  id: string;
+  email: string;
+  password: string;
+  name: string;
+  onboardingCompleted: boolean;
+}
+
+export const MOCK_EMAIL_CODE = "123456";
+const ACCOUNTS_KEY = "lunchtime.mockAccounts";
+const ACCOUNT_KEY = "lunchtime.mockAccount"; // 지금 로그인한 이메일 계정 (소셜이면 없음)
+const SEED_ACCOUNT: MockAccount = {
+  id: MOCK_USER.id,
+  email: "test@lunchtime.dev",
+  password: "lunch1234",
+  name: MOCK_USER.name,
+  onboardingCompleted: true,
+};
+
+function readStorage<T>(key: string, fallback: T): T {
+  try {
+    const raw = window.localStorage.getItem(key);
+    return raw ? (JSON.parse(raw) as T) : fallback;
+  } catch {
+    return fallback;
+  }
+}
+
+function writeStorage(key: string, value: unknown): void {
+  try {
+    if (value === null) window.localStorage.removeItem(key);
+    else window.localStorage.setItem(key, JSON.stringify(value));
+  } catch {
+    // 저장 못 하면 이번 세션만
+  }
+}
+
+const accounts = (): MockAccount[] => readStorage<MockAccount[]>(ACCOUNTS_KEY, [SEED_ACCOUNT]);
+const findAccount = (email: string) => accounts().find((a) => a.email === email);
+
+function saveAccount(account: MockAccount): void {
+  writeStorage(ACCOUNTS_KEY, [...accounts().filter((a) => a.email !== account.email), account]);
+}
+
+const emailCodes = new Map<string, { expiresAt: number; sentAt: number; attempts: number }>(); // purpose:email
+const verificationTokens = new Map<string, { email: string; purpose: string }>();
+const loginFailures = new Map<string, number>();
+
 function currentUser(): User | null {
-  if (state.loggedOut || getMockScenarios().has("guest")) return null;
-  return state.user;
+  const auth = storedAuth();
+  if (auth === "out") return null;
+  if (auth !== "in" && getMockScenarios().has("guest")) return null;
+  const account = findAccount(readStorage<string | null>(ACCOUNT_KEY, null) ?? "");
+  if (!account) return state.user;
+  // 이메일 계정: 이름 · 온보딩 여부는 계정에서, 나머지(숫자 등)는 목 사용자 것을 빌린다
+  return { ...state.user, id: account.id, name: account.name, provider: "email", onboardingCompleted: account.onboardingCompleted };
+}
+
+function emailLoginResponse(account: MockAccount, isNewUser: boolean) {
+  setStoredAuth("in");
+  writeStorage(ACCOUNT_KEY, account.email);
+  const { id, name, onboardingCompleted } = account;
+  return {
+    accessToken: "mock-access",
+    refreshToken: "mock-refresh",
+    isNewUser,
+    user: { id, name, provider: "email", role: "user", onboardingCompleted },
+  };
+}
+
+function consumeVerificationToken(token: string, email: string, purpose: string): void {
+  const v = verificationTokens.get(token);
+  if (!v || v.email !== email || v.purpose !== purpose) fail(400, "INVALID_CODE", "이메일 인증을 다시 해 주세요.");
+  verificationTokens.delete(token);
 }
 
 function requireUser(): User {
@@ -373,14 +473,91 @@ type Handler = (ctx: Ctx) => unknown;
 
 const routes: Record<string, Handler> = {
   // 인증 · 내 정보
-  "POST /auth/login": () => {
-    state.loggedOut = false;
-    const { id, name, provider, role, onboardingCompleted } = state.user;
-    return { accessToken: "mock-access", refreshToken: "mock-refresh", isNewUser: false, user: { id, name, provider, role, onboardingCompleted } };
+  "POST /auth/login": ({ body }) => {
+    const { provider } = body as LoginRequest;
+    if (!provider) fail(400, "VALIDATION_FAILED", "로그인 방식을 골라 주세요.");
+    setStoredAuth("in");
+    writeStorage(ACCOUNT_KEY, null);
+    // newUser 시나리오: 처음 가입한 사용자 → 취향 없음 · 온보딩 전
+    const isNewUser = getMockScenarios().has("newUser");
+    if (isNewUser) {
+      state.user = { ...state.user, provider, onboardingCompleted: false, createdAt: nowKst() };
+      state.preferences = { dislikedIngredients: [], allergies: [], spiceLevel: null, favoriteCuisines: [] };
+    }
+    const { id, name, role, onboardingCompleted } = state.user;
+    return { accessToken: "mock-access", refreshToken: "mock-refresh", isNewUser, user: { id, name, provider: state.user.provider, role, onboardingCompleted } };
   },
   "POST /auth/refresh": () => ({ accessToken: "mock-access", refreshToken: "mock-refresh" }),
   "POST /auth/logout": () => {
-    state.loggedOut = true;
+    setStoredAuth("out");
+    writeStorage(ACCOUNT_KEY, null);
+  },
+
+  // 이메일 계정
+  "POST /auth/email/code": ({ body }) => {
+    const { email: raw, purpose } = body as EmailCodeRequest;
+    const email = normalizeEmail(raw ?? "");
+    if (checkEmail(email)) fail(400, "VALIDATION_FAILED", "이메일 형식이 맞지 않아요.", { email: "형식 오류" });
+    if (purpose === "signup" && findAccount(email)) fail(409, "EMAIL_TAKEN", "이미 가입된 이메일이에요.");
+    const key = purpose + ":" + email;
+    const prev = emailCodes.get(key);
+    if (prev && Date.now() - prev.sentAt < 60_000) fail(429, "RATE_LIMITED", "잠시 후 다시 받아 주세요.");
+    // 재설정은 가입 안 된 이메일이어도 같은 응답 (계정이 있는지 알려 주지 않는다)
+    emailCodes.set(key, { sentAt: Date.now(), expiresAt: Date.now() + 600_000, attempts: 0 });
+    console.info("[mock] " + email + " 인증번호: " + MOCK_EMAIL_CODE);
+    return { expiresInSec: 600, resendAfterSec: 60 };
+  },
+  "POST /auth/email/verify": ({ body }) => {
+    const { email: raw, purpose, code } = body as EmailVerifyRequest;
+    const email = normalizeEmail(raw ?? "");
+    const key = purpose + ":" + email;
+    const entry = emailCodes.get(key);
+    if (!entry || entry.attempts >= 5) fail(400, "CODE_EXPIRED", "인증번호를 다시 받아 주세요.");
+    if (Date.now() > entry.expiresAt) fail(400, "CODE_EXPIRED", "인증번호 시간이 지났어요. 다시 받아 주세요.");
+    if (code !== MOCK_EMAIL_CODE) {
+      entry.attempts += 1;
+      fail(400, "INVALID_CODE", "인증번호가 맞지 않아요.");
+    }
+    emailCodes.delete(key);
+    const verificationToken = newId("verify");
+    verificationTokens.set(verificationToken, { email, purpose });
+    return { verificationToken };
+  },
+  "POST /auth/email/signup": ({ body }) => {
+    const input = body as EmailSignupRequest;
+    const email = normalizeEmail(input.email ?? "");
+    const problem = checkPassword(input.password ?? "") ?? checkName(input.name ?? "");
+    if (problem) fail(400, "VALIDATION_FAILED", problem);
+    consumeVerificationToken(input.verificationToken, email, "signup");
+    if (findAccount(email)) fail(409, "EMAIL_TAKEN", "이미 가입된 이메일이에요.");
+    const account: MockAccount = { id: newId("u"), email, password: input.password, name: input.name.trim(), onboardingCompleted: false };
+    saveAccount(account);
+    // 새 사용자: 취향 · 찜 없이 시작
+    state.preferences = { dislikedIngredients: [], allergies: [], spiceLevel: null, favoriteCuisines: [] };
+    state.favorites = [];
+    return emailLoginResponse(account, true);
+  },
+  "POST /auth/email/login": ({ body }) => {
+    const { email: raw, password } = body as EmailLoginRequest;
+    const email = normalizeEmail(raw ?? "");
+    if ((loginFailures.get(email) ?? 0) >= 5) fail(429, "RATE_LIMITED", "로그인을 여러 번 실패했어요. 잠시 후 다시 시도해 주세요.");
+    const account = findAccount(email);
+    if (!account || account.password !== password) {
+      loginFailures.set(email, (loginFailures.get(email) ?? 0) + 1);
+      fail(401, "INVALID_CREDENTIALS", "이메일 또는 비밀번호가 맞지 않아요.");
+    }
+    loginFailures.delete(email);
+    return emailLoginResponse(account, false);
+  },
+  "POST /auth/email/password-reset": ({ body }) => {
+    const input = body as PasswordResetRequest;
+    const email = normalizeEmail(input.email ?? "");
+    const problem = checkPassword(input.password ?? "");
+    if (problem) fail(400, "VALIDATION_FAILED", problem);
+    consumeVerificationToken(input.verificationToken, email, "reset");
+    const account = findAccount(email);
+    if (account) saveAccount({ ...account, password: input.password });
+    loginFailures.delete(email);
   },
   "GET /me": () => {
     const user = requireUser();
@@ -395,8 +572,11 @@ const routes: Record<string, Handler> = {
     };
   },
   "DELETE /me": () => {
-    requireUser();
-    state.loggedOut = true;
+    const user = requireUser();
+    // 탈퇴한 이메일 계정은 지운다 (기본 테스트 계정은 남김)
+    writeStorage(ACCOUNTS_KEY, accounts().filter((a) => a.id !== user.id || a.id === SEED_ACCOUNT.id));
+    writeStorage(ACCOUNT_KEY, null);
+    setStoredAuth("out");
   },
   "GET /me/preferences": () => {
     requireUser();
@@ -407,7 +587,11 @@ const routes: Record<string, Handler> = {
     const { completeOnboarding, ...prefs } = body as PreferencesInput;
     state.preferences = prefs;
     state.tasteSaved = true;
-    if (completeOnboarding) user.onboardingCompleted = true;
+    if (completeOnboarding) {
+      state.user.onboardingCompleted = true;
+      const account = accounts().find((a) => a.id === user.id);
+      if (account) saveAccount({ ...account, onboardingCompleted: true });
+    }
     return prefs;
   },
   "GET /preferences/options": () => MOCK_PREFERENCE_OPTIONS,
@@ -451,7 +635,8 @@ const routes: Record<string, Handler> = {
     const q = query.get("q")?.trim() ?? "";
     const type = query.get("type") ?? "all";
     const personal = !!currentPreferences();
-    const menus = MOCK_MENUS.filter((m) => q && (m.name.includes(q) || m.kakaoKeyword.includes(q))).map((m) => {
+    const matched = MOCK_MENUS.filter((m) => q && (m.name.includes(q) || m.kakaoKeyword.includes(q)));
+    const menus = matched.map((m) => {
       const score = MOCK_MENU_SCORES.find((s) => s.menuId === m.id);
       return {
         menu: { id: m.id, name: m.name, imageUrl: m.imageUrl },
@@ -459,7 +644,10 @@ const routes: Record<string, Handler> = {
         nearbyCount: searchRestaurants(origin, { menuId: m.id }).length,
       };
     });
-    const restaurants = q ? searchRestaurants(origin, { q }) : [];
+    // 식당: 맞는 메뉴를 파는 곳(근거 순서대로) → 이름 · 대표 메뉴 · 카테고리가 맞는 곳
+    const byMenu = matched[0] ? searchRestaurants(origin, { menuId: matched[0].id }) : [];
+    const byName = q ? searchRestaurants(origin, { q }).filter((r) => !byMenu.some((b) => b.placeId === r.placeId)) : [];
+    const restaurants = [...byMenu, ...byName];
     return { menus: type === "restaurant" ? [] : menus, restaurants: type === "menu" ? [] : restaurants };
   },
 
