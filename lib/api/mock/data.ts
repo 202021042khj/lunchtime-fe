@@ -70,16 +70,16 @@ export const MOCK_LOCATION_SEARCH: LocationSearchResult[] = [
 ];
 
 export const MOCK_MENUS: Menu[] = [
-  { id: "m_12", name: "얼큰 순두부찌개", category: "찌개류", imageUrl: null, ingredients: ["두부", "바지락", "계란", "고춧가루"], tastes: ["매운맛", "국물"], spiceLevel: 3, weathers: ["cold", "rain"], kakaoKeyword: "순두부찌개", kakaoCategory: "찌개,전골", visible: true },
-  { id: "m_3", name: "쌀국수", category: "아시안", imageUrl: null, ingredients: ["쌀국수면", "소고기", "숙주", "고수"], tastes: ["국물", "담백"], spiceLevel: 1, weathers: ["cold", "rain"], kakaoKeyword: "쌀국수", kakaoCategory: "베트남음식", visible: true },
-  { id: "m_7", name: "김치찌개", category: "찌개류", imageUrl: null, ingredients: ["김치", "돼지고기", "두부"], tastes: ["매운맛", "국물"], spiceLevel: 2, weathers: ["cold"], kakaoKeyword: "김치찌개", kakaoCategory: "찌개,전골", visible: true },
-  { id: "m_5", name: "칼국수", category: "면류", imageUrl: null, ingredients: ["밀가루면", "바지락", "애호박"], tastes: ["국물", "담백"], spiceLevel: 0, weathers: ["rain", "cold"], kakaoKeyword: "칼국수", kakaoCategory: "국수", visible: true },
-  { id: "m_9", name: "초밥", category: "일식", imageUrl: null, ingredients: ["밥", "회·날것", "생선", "와사비"], tastes: ["담백"], spiceLevel: 0, weathers: ["clear", "hot"], kakaoKeyword: "초밥", kakaoCategory: "초밥,롤", visible: true },
-  { id: "m_21", name: "돈까스", category: "일식", imageUrl: null, ingredients: ["돼지고기", "빵가루", "계란", "밀"], tastes: ["고소함"], spiceLevel: 0, weathers: ["clear"], kakaoKeyword: "돈까스", kakaoCategory: "돈까스,우동", visible: true },
-  { id: "m_14", name: "짬뽕", category: "중식", imageUrl: null, ingredients: ["밀가루면", "오징어", "새우", "홍합"], tastes: ["매운맛", "국물"], spiceLevel: 3, weathers: ["cold", "rain"], kakaoKeyword: "짬뽕", kakaoCategory: "중식", visible: true },
-  { id: "m_30", name: "마라탕", category: "중식", imageUrl: null, ingredients: ["마라소스", "청경채", "두부피", "땅콩"], tastes: ["매운맛", "얼얼함"], spiceLevel: 4, weathers: ["cold"], kakaoKeyword: "마라탕", kakaoCategory: "중식", visible: true },
-  { id: "m_2", name: "물냉면", category: "면류", imageUrl: null, ingredients: ["메밀면", "오이", "계란", "배"], tastes: ["시원함"], spiceLevel: 0, weathers: ["hot"], kakaoKeyword: "냉면", kakaoCategory: "냉면", visible: true },
-  { id: "m_18", name: "순대국밥", category: "국밥", imageUrl: null, ingredients: ["순대", "내장류", "들깨"], tastes: ["국물", "든든함"], spiceLevel: 1, weathers: ["cold"], kakaoKeyword: "국밥", kakaoCategory: "국밥", visible: true },
+  { id: "m_12", name: "얼큰 순두부찌개", cuisine: "한식", category: "찌개류", imageUrl: null, ingredients: ["두부", "바지락", "계란", "고춧가루"], tastes: ["매운맛", "국물"], spiceLevel: 3, weathers: ["cold", "rain"], kakaoKeyword: "순두부찌개", kakaoCategory: "찌개,전골", visible: true },
+  { id: "m_3", name: "쌀국수", cuisine: "아시안", category: "아시안", imageUrl: null, ingredients: ["쌀국수면", "소고기", "숙주", "고수"], tastes: ["국물", "담백"], spiceLevel: 1, weathers: ["cold", "rain"], kakaoKeyword: "쌀국수", kakaoCategory: "베트남음식", visible: true },
+  { id: "m_7", name: "김치찌개", cuisine: "한식", category: "찌개류", imageUrl: null, ingredients: ["김치", "돼지고기", "두부"], tastes: ["매운맛", "국물"], spiceLevel: 2, weathers: ["cold"], kakaoKeyword: "김치찌개", kakaoCategory: "찌개,전골", visible: true },
+  { id: "m_5", name: "칼국수", cuisine: "한식", category: "면류", imageUrl: null, ingredients: ["밀가루면", "바지락", "애호박"], tastes: ["국물", "담백"], spiceLevel: 0, weathers: ["rain", "cold"], kakaoKeyword: "칼국수", kakaoCategory: "국수", visible: true },
+  { id: "m_9", name: "초밥", cuisine: "일식", category: "일식", imageUrl: null, ingredients: ["밥", "회·날것", "생선", "와사비"], tastes: ["담백"], spiceLevel: 0, weathers: ["clear", "hot"], kakaoKeyword: "초밥", kakaoCategory: "초밥,롤", visible: true },
+  { id: "m_21", name: "돈까스", cuisine: "일식", category: "일식", imageUrl: null, ingredients: ["돼지고기", "빵가루", "계란", "밀"], tastes: ["고소함"], spiceLevel: 0, weathers: ["clear"], kakaoKeyword: "돈까스", kakaoCategory: "돈까스,우동", visible: true },
+  { id: "m_14", name: "짬뽕", cuisine: "중식", category: "중식", imageUrl: null, ingredients: ["밀가루면", "오징어", "새우", "홍합"], tastes: ["매운맛", "국물"], spiceLevel: 3, weathers: ["cold", "rain"], kakaoKeyword: "짬뽕", kakaoCategory: "중식", visible: true },
+  { id: "m_30", name: "마라탕", cuisine: "중식", category: "중식", imageUrl: null, ingredients: ["마라소스", "청경채", "두부피", "땅콩"], tastes: ["매운맛", "얼얼함"], spiceLevel: 4, weathers: ["cold"], kakaoKeyword: "마라탕", kakaoCategory: "중식", visible: true },
+  { id: "m_2", name: "물냉면", cuisine: "한식", category: "면류", imageUrl: null, ingredients: ["메밀면", "오이", "계란", "배"], tastes: ["시원함"], spiceLevel: 0, weathers: ["hot"], kakaoKeyword: "냉면", kakaoCategory: "냉면", visible: true },
+  { id: "m_18", name: "순대국밥", cuisine: "한식", category: "국밥", imageUrl: null, ingredients: ["순대", "내장류", "들깨"], tastes: ["국물", "든든함"], spiceLevel: 1, weathers: ["cold"], kakaoKeyword: "국밥", kakaoCategory: "국밥", visible: true },
 ];
 
 // 취향(오이·고수 제외, 갑각류 알레르기, 맵기 3)으로 점수를 매긴 결과라고 가정한 순서.

@@ -1,3 +1,4 @@
+import { Menu } from "@/types/menu";
 import { RestaurantHours } from "@/types/restaurant";
 import { Review } from "@/types/review";
 import { LoginProvider } from "@/types/user";
@@ -29,6 +30,8 @@ export interface Sponsored {
   feeKrw: number;
   paymentStatus: PaymentStatus;
   status: SponsoredStatus; // 서버가 기간으로 계산
+  canceled: boolean; // 기간 중에 취소해 종료된 광고
+  targetMenuNames: string[]; // 표 표시용 (targetMenuIds의 이름)
   impressions: number;
   clicks: number;
 }
@@ -137,3 +140,49 @@ export interface ResolveReportInput {
   action: "dismiss" | "delete";
   suspendAuthorDays?: number;
 }
+
+// ---------- 메뉴 관리 ----------
+
+// GET /admin/menus 한 줄: 메뉴 마스터 + 7일 추천 수
+export interface AdminMenu extends Menu {
+  recommendCount7d: number;
+}
+
+export interface AdminMenusQuery {
+  q?: string; // 메뉴 이름 · 재료
+  cuisine?: string;
+  visible?: boolean;
+  page?: number;
+  size?: number;
+}
+
+// GET /admin/menus 응답: 목록 + 종류별 · 숨김 개수 (필터 칩 숫자)
+export interface AdminMenusResponse extends AdminPage<AdminMenu> {
+  counts: { all: number; hidden: number };
+}
+
+// POST /admin/menus · PATCH /admin/menus/{id}
+export type MenuInput = Omit<Menu, "id">;
+
+// POST /admin/menus/import 결과
+export interface MenuImportResult {
+  created: number;
+  updated: number;
+  failed: { line: number; reason: string }[];
+}
+
+// ---------- 광고 식당 고정 ----------
+
+// GET /admin/sponsored/summary
+export interface AdminSponsoredSummary {
+  active: number;
+  monthRevenueKrw: number;
+  avgCtrPercent: number | null;
+  pendingPayment: number;
+}
+
+// POST /admin/sponsored · PATCH /admin/sponsored/{id} · POST /admin/sponsored/{id}/renew
+export type SponsoredInput = Pick<
+  Sponsored,
+  "place" | "targetMenuIds" | "targetCategories" | "radiusM" | "startDate" | "endDate" | "hours" | "priority" | "feeKrw" | "paymentStatus"
+>;

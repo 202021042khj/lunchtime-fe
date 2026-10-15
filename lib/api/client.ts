@@ -28,6 +28,8 @@ interface RequestOptions {
   auth?: "user" | "admin";
   // CSV 내려받기처럼 JSON이 아닌 응답
   text?: boolean;
+  // 파일 올리기 (multipart). body 대신 쓴다
+  form?: FormData;
 }
 
 // 배열은 콤마로 합치고(excludeMenuIds=m_12,m_7), 빈 값은 뺀다
@@ -44,16 +46,16 @@ export function toSearchParams(query: object = {}): URLSearchParams {
   return params;
 }
 
-async function send(method: HttpMethod, path: string, { query, body, auth = "user" }: RequestOptions): Promise<Response> {
+async function send(method: HttpMethod, path: string, { query, body, form, auth = "user" }: RequestOptions): Promise<Response> {
   const qs = toSearchParams(query).toString();
   const token = auth === "admin" ? getAdminAccessToken() : getAccessToken();
   return fetch(`${BASE_URL}${path}${qs ? `?${qs}` : ""}`, {
     method,
     headers: {
-      ...(body !== undefined && { "Content-Type": "application/json" }),
+      ...(body !== undefined && !form && { "Content-Type": "application/json" }),
       ...(token && { Authorization: `Bearer ${token}` }),
     },
-    body: body !== undefined ? JSON.stringify(body) : undefined,
+    body: form ?? (body !== undefined ? JSON.stringify(body) : undefined),
   });
 }
 
@@ -91,7 +93,7 @@ async function toApiError(res: Response): Promise<ApiError> {
 export async function request<T>(method: HttpMethod, path: string, options: RequestOptions = {}): Promise<T> {
   if (USE_MOCK) {
     const { handleMock } = await import("@/lib/api/mock/handlers");
-    return handleMock(method, path, toSearchParams(options.query), options.body) as Promise<T>;
+    return handleMock(method, path, toSearchParams(options.query), options.form ?? options.body) as Promise<T>;
   }
 
   let res = await send(method, path, options);

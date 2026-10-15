@@ -12,14 +12,12 @@ interface NavItem {
   href: string;
   label: string;
   icon: LucideIcon;
-  // 다음 단계에서 만드는 화면
-  soon?: boolean;
 }
 
 const NAV: NavItem[] = [
   { href: ADMIN_ROUTES.users, label: "유저 관리", icon: Users },
-  { href: ADMIN_ROUTES.sponsored, label: "광고 식당 고정", icon: Pin, soon: true },
-  { href: ADMIN_ROUTES.menus, label: "메뉴 관리", icon: List, soon: true },
+  { href: ADMIN_ROUTES.sponsored, label: "광고 식당 고정", icon: Pin },
+  { href: ADMIN_ROUTES.menus, label: "메뉴 관리", icon: List },
   { href: ADMIN_ROUTES.reports, label: "리뷰 신고", icon: Flag },
 ];
 
@@ -42,7 +40,6 @@ export default function AdminSidebar({ admin, pendingReports, onLogout }: AdminS
         <Icon aria-hidden className={cn("size-4 shrink-0", item.href === ADMIN_ROUTES.sponsored && "fill-current")} />
         <span className="whitespace-nowrap">{item.label}</span>
         <span className="flex-1" />
-        {item.soon && <span className="rounded-md bg-fills-quaternary px-1.5 text-caption-1 text-labels-tertiary">준비 중</span>}
         {item.href === ADMIN_ROUTES.reports && !!pendingReports && (
           <span aria-label={`처리 대기 ${pendingReports}건`} className="rounded-full bg-accents-red px-[7px] text-footnote font-semibold text-white">
             {pendingReports}
@@ -53,13 +50,9 @@ export default function AdminSidebar({ admin, pendingReports, onLogout }: AdminS
     const cls = cn(
       "flex items-center gap-2.5 rounded-xl px-3 py-2.5 text-subheadline",
       active ? "bg-brand-primary-tint font-semibold text-brand-primary" : "text-labels-primary",
-      item.soon ? "cursor-default text-labels-tertiary" : !active && "hover:bg-white/70",
+      !active && "hover:bg-white/70",
     );
-    return item.soon ? (
-      <span key={item.href} aria-disabled className={cls}>
-        {body}
-      </span>
-    ) : (
+    return (
       <Link key={item.href} href={item.href} aria-current={active ? "page" : undefined} className={cls}>
         {body}
       </Link>

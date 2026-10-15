@@ -1,16 +1,9 @@
 // 어드민 목 API. 사용자 쪽 목(handlers.ts)과 상태를 나눠 둔다.
-// 어드민 토큰은 사용자 토큰과 따로 확인한다 (사용자로 로그인했어도 어드민 API는 401)
 import { PROVIDER_LABELS } from "@/constants/user";
-import { ApiError } from "@/lib/api/client";
+import { ADMIN_TOKEN, AdminHandler, fail, page, requireAdmin } from "@/lib/api/mock/adminCommon";
 import { MOCK_ADMIN, MOCK_ADMIN_OTP, MOCK_ADMIN_USERS, MOCK_PAST_RESOLVED, MOCK_REPORT_GROUPS } from "@/lib/api/mock/adminData";
-import { getAdminAccessToken } from "@/lib/api/token";
 import { AdminLoginRequest, AdminUser, ReportGroup, ResolveReportInput, SuspendUserInput, UserStatus } from "@/types/admin";
-import { ErrorCode } from "@/types/common";
 
-type Ctx = { params: Record<string, string>; query: URLSearchParams; body: unknown };
-type Handler = (ctx: Ctx) => unknown;
-
-const ADMIN_TOKEN = "mock-admin-access";
 const DAY = 24 * 60 * 60 * 1000;
 
 const state = {
@@ -18,22 +11,6 @@ const state = {
   reports: structuredClone(MOCK_REPORT_GROUPS),
   loginFailures: new Map<string, number>(),
 };
-
-function fail(status: number, code: ErrorCode, message: string): never {
-  throw new ApiError(status, code, message);
-}
-
-function requireAdmin(): void {
-  if (getAdminAccessToken() !== ADMIN_TOKEN) fail(401, "UNAUTHORIZED", "관리자 로그인이 필요해요.");
-}
-
-function page<T>(items: T[], query: URLSearchParams) {
-  const size = Math.min(Number(query.get("size") ?? 20) || 20, 100);
-  const total = items.length;
-  const last = Math.max(1, Math.ceil(total / size));
-  const p = Math.min(Math.max(Number(query.get("page") ?? 1) || 1, 1), last);
-  return { items: items.slice((p - 1) * size, p * size), total, page: p, size };
-}
 
 function filteredUsers(query: URLSearchParams): AdminUser[] {
   const q = query.get("q")?.trim().toLowerCase() ?? "";
@@ -56,7 +33,7 @@ const isToday = (iso: string) => new Date(iso).toDateString() === new Date().toD
 const csvCell = (v: string | number) => (/[",\n]/.test(String(v)) ? `"${String(v).replace(/"/g, '""')}"` : String(v));
 const STATUS_LABELS: Record<UserStatus, string> = { active: "정상", suspended: "정지", withdrawn: "탈퇴" };
 
-export function createAdminRoutes(deps: { removeReview: (reviewId: string) => void }): Record<string, Handler> {
+export function createAdminRoutes(deps: { removeReview: (reviewId: string) => void }): Record<string, AdminHandler> {
   return {
     // ---------- 인증 ----------
     "POST /admin/auth/login": ({ body }) => {

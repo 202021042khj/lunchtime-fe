@@ -357,15 +357,39 @@ REST + JSON API다. [기능명세서](https://claude.ai/code/artifact/98ec7729-5
 
 `status`는 서버가 기간으로 계산한다(예약 · 진행 중 · 종료). `paymentStatus`가 `pending`이어도 기간이 되면 노출할지는 미결정이다.
 
+| 항목 | 규칙 |
+| --- | --- |
+| 목록 | `GET /admin/sponsored` 응답 한 줄은 `Sponsored`에 `canceled`(기간 중 취소해 종료됨), `targetMenuNames`(표 표시용, `targetMenuIds`의 이름)를 더한 모양. 진행 중 → 예약 → 종료, 같은 상태는 `priority` 순 |
+| 요약 | `GET /admin/sponsored/summary` → `{ active, monthRevenueKrw, avgCtrPercent, pendingPayment }`. 매출은 이번 달에 걸친 결제 완료 광고의 광고료 합, 클릭률은 진행 중 광고의 클릭 ÷ 노출(노출 0이면 null), 입금 대기는 끝나지 않은 `pending` 수 |
+| 장소 검색 | `GET /admin/places/search` → `{ items: [{ placeId, name, address, lat, lng, category }] }` (카카오 장소 검색 결과를 그대로 줄인 것) |
+| 검사 | 노출 메뉴나 카테고리 하나 이상, `radiusM`은 500 · 1000 · 2000 · 3000, `endDate ≥ startDate`, `priority` 1\~99, `hours`가 있으면 `close > open`이고 브레이크는 영업시간 안. 틀리면 400 `VALIDATION_FAILED` |
+| `targetCategories` | 메뉴 세부 카테고리(예: `찌개류`) 또는 종류 전체(예: `한식` = 한식 메뉴 모두) |
+| 수정 | `PATCH`는 식당(`place`)을 바꿀 수 없다. 종료된 광고는 409 → 재등록을 쓴다 |
+| 재등록 | `POST /admin/sponsored/{id}/renew` body는 `place`를 뺀 `POST /admin/sponsored`와 같다(식당은 원래 광고에서 복사). 종료된 광고만 가능, 새 광고를 만들어 돌려준다 |
+| 취소 | `DELETE /admin/sponsored/{id}`는 지우지 않고 `canceled: true`로 바로 종료한다(기록 유지). 이미 종료면 409 |
+
 ### 메뉴 관리
 
 | 메서드 | 경로 | 설명 |
 | --- | --- | --- |
-| GET | `/admin/menus?q=&category=&visible=` | 메뉴 목록 (7일 추천 수 포함) |
+| GET | `/admin/menus?q=&cuisine=&visible=` | 메뉴 목록 (7일 추천 수 포함). `q`는 메뉴 이름 · 재료 |
 | POST | `/admin/menus` | 메뉴 추가 |
 | PATCH | `/admin/menus/{id}` | 메뉴 수정, 노출/숨김 |
-| POST | `/admin/menus/import` | CSV 가져오기 (multipart, 같은 이름은 덮어쓰기) |
-| GET / POST | `/admin/ingredients` | 재료·알레르기 사전 (취향 선택지와 같은 목록) |
+| POST | `/admin/menus/import` | CSV 가져오기 (multipart `file`, 같은 이름은 덮어쓰기) |
+| GET / POST | `/admin/ingredients` | 재료·알레르기 사전 (취향 선택지와 같은 목록). GET → `{ items: string[] }` |
+
+`GET /admin/menus` 응답은 `{ items: AdminMenu[], total, page, size, counts: { all, hidden } }`다. `AdminMenu`는 `Menu` + `recommendCount7d`. `counts`는 필터 칩 숫자(전체 · 숨김)이고 검색 · 필터와 상관없는 전체 수다. 노출 메뉴가 먼저, 그 안에서 7일 추천 수 순.
+
+메뉴 추가 · 수정 검사: 이름(같은 이름이 있으면 409 `VALIDATION_FAILED`), `cuisine`, 재료 1개 이상, `spiceLevel` 0\~4, `kakaoKeyword`는 필수. 재료는 사전에 없는 이름도 저장하지만, 취향 제외 필터에 걸리려면 사전과 같은 이름이어야 한다(앱이 경고). `weathers`가 비어 있으면 "상관없음"이다(`clear` · `hot` · `cold` · `rain` · `snow`).
+
+CSV 양식 (UTF-8, BOM 있어도 됨, 첫 줄은 머리글, 목록은 `|`로 구분):
+
+```
+이름,종류,카테고리,재료,맛,맵기,날씨,카카오 키워드,카카오 카테고리,노출
+얼큰 순두부찌개,한식,찌개류,두부|바지락|계란|고춧가루,매운맛|국물,3,쌀쌀함|비,순두부찌개,"찌개,전골",Y
+```
+
+날씨는 한글(맑음 · 더움 · 쌀쌀함 · 비 · 눈)이나 값 둘 다 받고, 노출은 Y/N. 응답 `{ "created": 1, "updated": 1, "failed": [{ "line": 4, "reason": "카카오 검색 키워드를 적어 주세요." }] }` — 문제 있는 줄만 건너뛰고 나머지는 반영한다.
 
 ### 리뷰 신고
 
@@ -412,12 +436,12 @@ REST + JSON API다. [기능명세서](https://claude.ai/code/artifact/98ec7729-5
 | 객체 | 필드 |
 | --- | --- |
 | RestaurantDetail | Restaurant + `recentReviews: Review[2]`, `ratingSummary: { 1~5점별 개수 }` |
-| Menu | `id`, `name`, `category`, `imageUrl`, `ingredients[]`, `tastes[]`, `spiceLevel(0~4)`, `weathers[]`, `kakaoKeyword`, `kakaoCategory`, `visible` |
+| Menu | `id`, `name`, `cuisine`(종류: 한식 · 중식 …, 취향 "좋아하는 음식 종류"와 같은 값), `category`(세부: 찌개류 · 면류 …), `imageUrl`, `ingredients[]`, `tastes[]`, `spiceLevel(0~4)`, `weathers[]`, `kakaoKeyword`, `kakaoCategory`, `visible` |
 | Review | `id`, `placeId`, `placeName`, `author { id, name }`, `rating`, `menus[]`, `tags[]`, `content`, `photos[{ id, url }]`, `createdAt`, `isMine` |
 | Preferences | `dislikedIngredients[]`, `allergies[]`, `spiceLevel(0~4)`, `favoriteCuisines[]` |
 | User (내 정보) | `id`, `name`, `provider(kakao\|apple\|google\|email)`, `role`, `onboardingCompleted`, `createdAt`, `stats { reviewCount, favoriteCount, recommendationCount }` |
 | SavedLocation | `id`, `label`(회사 등), `name`(동네), `address`(위치 설정에 표시), `lat`, `lng` |
-| Sponsored (어드민) | `id`, `place`, `targetMenuIds[]`, `targetCategories[]`, `radiusM`, `startDate`, `endDate`, hours, `priority`, `feeKrw`, `paymentStatus(pending\|paid)`, `status(scheduled\|active\|ended)`, `impressions`, `clicks` |
+| Sponsored (어드민) | `id`, `place`, `targetMenuIds[]`, `targetMenuNames[]`, `targetCategories[]`, `radiusM`, `startDate`, `endDate`, hours, `priority`, `feeKrw`, `paymentStatus(pending\|paid)`, `status(scheduled\|active\|ended)`, `canceled`, `impressions`, `clicks` |
 | ReportGroup (어드민) | `review`, `status(pending\|resolved)`, `resolution(dismissed\|deleted\|null)`, `reasonCounts { abuse, ad, false_info, irrelevant }`, `reportCount`, `firstReportedAt`, `lastReportedAt`, `memos[]`, `authorHistory { reviewCount, reportCount, deletedCount }` |
 | AdminUser (어드민) | `id`, `name`, `maskedEmail`, `provider`, `createdAt`, `lastActiveAt`, `reviewCount`, `favoriteCount`, `reportCount`, `status(active\|suspended\|withdrawn)`, `suspendedUntil` |
 

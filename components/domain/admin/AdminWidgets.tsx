@@ -39,10 +39,13 @@ const BADGE_TONES = {
   green: "bg-[rgba(52,199,89,0.12)] text-accents-green",
   red: "bg-[rgba(255,56,60,0.12)] text-accents-red",
   gray: "bg-[rgba(60,60,67,0.12)] text-labels-secondary",
+  brand: "bg-brand-primary-tint text-brand-primary",
 } as const;
 
 // 점 + 글자 상태 배지 (정상 · 정지 · 탈퇴 등)
-export function AdminStatusBadge({ label, tone }: { label: string; tone: keyof typeof BADGE_TONES }) {
+export type AdminBadgeTone = keyof typeof BADGE_TONES;
+
+export function AdminStatusBadge({ label, tone }: { label: string; tone: AdminBadgeTone }) {
   return (
     <span className={cn("inline-flex items-center gap-[5px] rounded-full px-2.5 py-[3px] text-footnote font-semibold whitespace-nowrap", BADGE_TONES[tone])}>
       <span aria-hidden className="size-1.5 rounded-full bg-current" />

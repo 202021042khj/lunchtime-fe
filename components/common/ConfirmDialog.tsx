@@ -13,6 +13,8 @@ interface ConfirmOptions {
   cancelLabel?: string;
   // 삭제 · 탈퇴처럼 되돌릴 수 없는 동작은 빨간 버튼
   destructive?: boolean;
+  // 알림만 할 때 (버튼 하나). 줄바꿈은 그대로 보여 준다
+  hideCancel?: boolean;
 }
 
 interface ConfirmDialogProps extends ConfirmOptions {
@@ -35,7 +37,16 @@ export function confirm(options: ConfirmOptions): Promise<boolean> {
 }
 
 // 앱 스타일 확인 창 (템플릿의 ConfirmModal은 관리자용 파란 스타일이라 따로 둔다)
-export default function ConfirmDialog({ isOpen, title, description, confirmLabel, cancelLabel = "취소", destructive = false, onAnswer }: ConfirmDialogProps) {
+export default function ConfirmDialog({
+  isOpen,
+  title,
+  description,
+  confirmLabel,
+  cancelLabel = "취소",
+  destructive = false,
+  hideCancel = false,
+  onAnswer,
+}: ConfirmDialogProps) {
   return (
     <DialogPrimitive.Root open={isOpen} onOpenChange={(open) => !open && onAnswer(false)}>
       <DialogPortal>
@@ -46,14 +57,16 @@ export default function ConfirmDialog({ isOpen, title, description, confirmLabel
         >
           <DialogPrimitive.Title className="text-headline text-labels-primary">{title}</DialogPrimitive.Title>
           {description ? (
-            <DialogPrimitive.Description className="text-subheadline text-labels-secondary">{description}</DialogPrimitive.Description>
+            <DialogPrimitive.Description className="text-subheadline whitespace-pre-line text-labels-secondary">{description}</DialogPrimitive.Description>
           ) : (
             <DialogPrimitive.Description className="sr-only">{title}</DialogPrimitive.Description>
           )}
           <div className="flex gap-2">
-            <Button type="button" variant="outlined" color="brand" shape="round" size="md" className="flex-1" onClick={() => onAnswer(false)}>
-              {cancelLabel}
-            </Button>
+            {!hideCancel && (
+              <Button type="button" variant="outlined" color="brand" shape="round" size="md" className="flex-1" onClick={() => onAnswer(false)}>
+                {cancelLabel}
+              </Button>
+            )}
             <Button
               type="button"
               color={destructive ? "red" : "brand"}

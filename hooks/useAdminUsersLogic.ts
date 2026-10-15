@@ -45,7 +45,8 @@ export function useAdminUsersLogic(): UseAdminUsersLogicResult {
   const [exporting, setExporting] = useState(false);
 
   const setParams = (patch: { q?: string; status?: UserStatus | null; page?: number }) => {
-    const next = new URLSearchParams(params.toString());
+    // 디바운스된 검색이 늦게 불려도 그사이 바뀐 필터를 덮지 않게, 지금 주소에서 읽는다
+    const next = new URLSearchParams(window.location.search);
     const set = (k: string, v: string | null) => (v ? next.set(k, v) : next.delete(k));
     if ("q" in patch) set("q", patch.q?.trim() || null);
     if ("status" in patch) set("status", patch.status ?? null);

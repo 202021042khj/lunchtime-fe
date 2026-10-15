@@ -21,6 +21,7 @@ import {
   MockMenuScore,
   MockRestaurant,
 } from "@/lib/api/mock/data";
+import { createAdminCatalogRoutes } from "@/lib/api/mock/adminCatalogHandlers";
 import { createAdminRoutes } from "@/lib/api/mock/adminHandlers";
 import { getMockScenarios } from "@/lib/api/mock/scenario";
 import { ErrorCode, LatLng } from "@/types/common";
@@ -285,7 +286,7 @@ function generatedAround(origin: LatLng): MockRestaurant[] {
     if (cached) return cached;
     const angle = (i / MOCK_MENUS.length) * 2 * Math.PI;
     const r = 0.002 + (i % 3) * 0.0015; // 약 200~500m
-    const cuisine = ["일식", "중식", "아시안"].includes(menu.category) ? menu.category : "한식";
+    const cuisine = menu.cuisine;
     const seed: MockRestaurant = {
       placeId,
       name: `동네 ${menu.kakaoKeyword}집`,
@@ -351,8 +352,6 @@ function sortReviews(list: Review[], sort: ReviewSort): Review[] {
 
 // ---------- 추천 ----------
 
-const CUISINE_OF_CATEGORY: Record<string, string> = { 찌개류: "한식", 면류: "한식", 국밥: "한식" };
-
 // 취향 미리보기: 메뉴 재료 · 맵기 · 종류로 대략 점수를 매긴다 (실제 계산은 서버가 정한다)
 function previewTaste(p: Preferences): PreferencePreview {
   const recommended: PreferencePreview["recommended"] = [];
@@ -367,7 +366,7 @@ function previewTaste(p: Preferences): PreferencePreview {
       excluded.push({ menu, reason });
       continue;
     }
-    const cuisine = CUISINE_OF_CATEGORY[m.category] ?? m.category;
+    const cuisine = m.cuisine;
     const popularRank = MOCK_MENU_SCORES.find((s) => s.menuId === m.id)?.popularRank ?? 10;
     let score = 62 + (10 - popularRank);
     if (p.favoriteCuisines.length) score += p.favoriteCuisines.includes(cuisine) ? 18 : -6;
@@ -776,11 +775,14 @@ const routes: Record<string, Handler> = {
 };
 
 // 어드민 API (상태는 adminHandlers.ts에 따로). 리뷰 삭제만 사용자 쪽 상태를 바꾼다
-const adminRoutes = createAdminRoutes({
-  removeReview: (reviewId) => {
-    state.reviews = state.reviews.filter((r) => r.id !== reviewId);
-  },
-});
+const adminRoutes = {
+  ...createAdminRoutes({
+    removeReview: (reviewId) => {
+      state.reviews = state.reviews.filter((r) => r.id !== reviewId);
+    },
+  }),
+  ...createAdminCatalogRoutes(),
+};
 
 function match(method: HttpMethod, path: string): { handler: Handler; params: Record<string, string> } | null {
   const parts = path.split("/").filter(Boolean);
@@ -806,7 +808,8 @@ export async function handleMock(method: HttpMethod, path: string, query: URLSea
   await new Promise((resolve) => setTimeout(resolve, DELAY_MS));
   const found = match(method, path);
   if (!found) fail(404, "NOT_FOUND", `목에 없는 API예요: ${method} ${path}`);
-  const result = found.handler({ params: found.params, query, body });
+  // 파일 읽기처럼 비동기인 핸들러도 있다
+  const result = await found.handler({ params: found.params, query, body });
   // 화면에서 응답 객체를 고쳐도 목 상태가 바뀌지 않게 복사
   return result === undefined ? undefined : structuredClone(result);
 }
