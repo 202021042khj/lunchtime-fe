@@ -86,6 +86,8 @@ export function useFavoritesLogic(): UseFavoritesLogicResult {
             "되돌리기",
           ),
         ),
+        // 되돌리기를 누를 시간을 준다
+        { autoClose: 5000 },
       );
     } catch {
       setRemovedIds((ids) => {

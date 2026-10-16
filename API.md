@@ -1,6 +1,6 @@
 # lunchtime API 명세서 v0.1
 
-Oct 8, 2026 · @Hojin Kang · Oct 15, 2026 프론트(목) 개발 중 정한 내용 반영
+Oct 8, 2026 · @Hojin Kang · Oct 15, 2026 프론트(목) 개발 중 정한 내용 반영 · Oct 16, 2026 백엔드 뼈대(에러 코드 3개 추가)
 
 ## 공통 규칙
 
@@ -39,6 +39,7 @@ REST + JSON API다. [기능명세서](https://claude.ai/code/artifact/98ec7729-5
 | POST | `/auth/email/signup` | 이메일 가입 (공개) | 이메일 가입 |
 | POST | `/auth/email/login` | 이메일 로그인 (공개) | 이메일 로그인 |
 | POST | `/auth/email/password-reset` | 비밀번호 재설정 (공개) | 비밀번호 재설정 |
+| POST | `/me/password` | 비밀번호 바꾸기 (이메일 계정만) `{ currentPassword, newPassword }` → 204 | MY |
 | POST | `/auth/refresh` | 토큰 재발급 (공개) | 공통 |
 | POST | `/auth/logout` | 로그아웃 (refreshToken 폐기) | MY |
 | GET | `/me` | 내 정보 + 요약 숫자 | MY |
@@ -100,6 +101,7 @@ REST + JSON API다. [기능명세서](https://claude.ai/code/artifact/98ec7729-5
 | 가입 | `purpose: signup`인데 이미 가입된 이메일이면 409 `EMAIL_TAKEN` |
 | 로그인 | 틀리면 401 `INVALID_CREDENTIALS`(이메일 · 비밀번호 중 무엇이 틀렸는지 알려 주지 않음). 5번 연속 실패하면 429 `RATE_LIMITED` |
 | 비밀번호 재설정 | 가입하지 않은 이메일이어도 `code` 요청은 같은 응답 (계정 존재 여부를 숨김) |
+| 비밀번호 바꾸기 | `POST /me/password`: 현재 비밀번호가 틀리면 401 `INVALID_CREDENTIALS`, 새 비밀번호가 규칙에 안 맞거나 지금과 같으면 400 `VALIDATION_FAILED`, 소셜 계정이면 400 |
 
 인증 메일 발송 서비스는 미결정이다.
 
@@ -364,9 +366,9 @@ REST + JSON API다. [기능명세서](https://claude.ai/code/artifact/98ec7729-5
 | 장소 검색 | `GET /admin/places/search` → `{ items: [{ placeId, name, address, lat, lng, category }] }` (카카오 장소 검색 결과를 그대로 줄인 것) |
 | 검사 | 노출 메뉴나 카테고리 하나 이상, `radiusM`은 500 · 1000 · 2000 · 3000, `endDate ≥ startDate`, `priority` 1\~99, `hours`가 있으면 `close > open`이고 브레이크는 영업시간 안. 틀리면 400 `VALIDATION_FAILED` |
 | `targetCategories` | 메뉴 세부 카테고리(예: `찌개류`) 또는 종류 전체(예: `한식` = 한식 메뉴 모두) |
-| 수정 | `PATCH`는 식당(`place`)을 바꿀 수 없다. 종료된 광고는 409 → 재등록을 쓴다 |
+| 수정 | `PATCH`는 식당(`place`)을 바꿀 수 없다. 종료된 광고는 409 `CONFLICT` → 재등록을 쓴다 |
 | 재등록 | `POST /admin/sponsored/{id}/renew` body는 `place`를 뺀 `POST /admin/sponsored`와 같다(식당은 원래 광고에서 복사). 종료된 광고만 가능, 새 광고를 만들어 돌려준다 |
-| 취소 | `DELETE /admin/sponsored/{id}`는 지우지 않고 `canceled: true`로 바로 종료한다(기록 유지). 이미 종료면 409 |
+| 취소 | `DELETE /admin/sponsored/{id}`는 지우지 않고 `canceled: true`로 바로 종료한다(기록 유지). 이미 종료면 409 `CONFLICT` |
 
 ### 메뉴 관리
 
@@ -380,7 +382,7 @@ REST + JSON API다. [기능명세서](https://claude.ai/code/artifact/98ec7729-5
 
 `GET /admin/menus` 응답은 `{ items: AdminMenu[], total, page, size, counts: { all, hidden } }`다. `AdminMenu`는 `Menu` + `recommendCount7d`. `counts`는 필터 칩 숫자(전체 · 숨김)이고 검색 · 필터와 상관없는 전체 수다. 노출 메뉴가 먼저, 그 안에서 7일 추천 수 순.
 
-메뉴 추가 · 수정 검사: 이름(같은 이름이 있으면 409 `VALIDATION_FAILED`), `cuisine`, 재료 1개 이상, `spiceLevel` 0\~4, `kakaoKeyword`는 필수. 재료는 사전에 없는 이름도 저장하지만, 취향 제외 필터에 걸리려면 사전과 같은 이름이어야 한다(앱이 경고). `weathers`가 비어 있으면 "상관없음"이다(`clear` · `hot` · `cold` · `rain` · `snow`).
+메뉴 추가 · 수정 검사: 이름(같은 이름이 있으면 409 `CONFLICT`), `cuisine`, 재료 1개 이상, `spiceLevel` 0\~4, `kakaoKeyword`는 필수. 재료는 사전에 없는 이름도 저장하지만, 취향 제외 필터에 걸리려면 사전과 같은 이름이어야 한다(앱이 경고). `weathers`가 비어 있으면 "상관없음"이다(`clear` · `hot` · `cold` · `rain` · `snow`).
 
 CSV 양식 (UTF-8, BOM 있어도 됨, 첫 줄은 머리글, 목록은 `|`로 구분):
 
@@ -469,6 +471,9 @@ CSV 양식 (UTF-8, BOM 있어도 됨, 첫 줄은 머리글, 목록은 `|`로 구
 | 400 | `INVALID_CODE` | 이메일 인증번호가 틀림, 또는 `verificationToken`이 맞지 않음 |
 | 400 | `CODE_EXPIRED` | 인증번호 시간(10분) 지남 · 5번 틀림 → 다시 받기 |
 | 401 | `INVALID_CREDENTIALS` | 이메일 로그인 · 어드민 로그인 실패 (어느 값이 틀렸는지 밝히지 않음) |
+| 409 | `CONFLICT` | 지금 상태에서는 할 수 없는 변경 (예: 같은 이름 메뉴, 종료된 광고 수정 · 취소, 탈퇴 유저 정지, 이미 처리한 신고) |
+| 500 | `INTERNAL_ERROR` | 서버 내부 오류 (내부 메시지는 응답에 넣지 않음) |
+| 503 | `SERVICE_UNAVAILABLE` | 서버가 DB 등에 연결하지 못함 |
 
 ## 미결정 사항
 

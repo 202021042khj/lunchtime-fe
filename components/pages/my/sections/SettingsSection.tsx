@@ -2,6 +2,7 @@
 
 import { Check, ChevronRight } from "lucide-react";
 import { Fragment, ReactNode, useState } from "react";
+import { openChangePassword } from "@/components/domain/auth/ChangePasswordDialog";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { LUNCH_ALERT_TIMES } from "@/constants/user";
 import { UseMyLogicResult } from "@/hooks/useMyLogic";
@@ -9,11 +10,13 @@ import { cn } from "@/lib/utils";
 
 const CARD = "rounded-[28px] border border-glass-border bg-glass-card shadow-[0_8px_32px_rgba(64,38,20,0.08)]";
 
-// Figma: 07 MY Settings Card (26:949) — 저장한 위치 · 알림 · 약관 · 로그아웃 · 회원 탈퇴
+// Figma: 07 MY Settings Card (26:949) — 저장한 위치 · 알림 · (이메일 계정: 비밀번호 바꾸기) · 약관 · 로그아웃 · 회원 탈퇴
 export default function SettingsSection({ logic }: { logic: UseMyLogicResult }) {
   const rows: ReactNode[] = [
     <Row key="loc" label="저장한 위치" value={logic.savedLocationLabel} onClick={logic.openLocationPicker} />,
     <LunchAlertRow key="alert" value={logic.lunchAlert} onChange={logic.setLunchAlert} />,
+    // 이메일 계정만 비밀번호가 있다
+    ...(logic.user?.provider === "email" ? [<Row key="password" label="비밀번호 바꾸기" onClick={openChangePassword} />] : []),
     <Row key="terms" label="이용약관 · 개인정보 처리방침" onClick={logic.openTerms} />,
     <Row key="logout" label="로그아웃" onClick={logic.logout} />,
     <Row key="withdraw" label="회원 탈퇴" danger onClick={logic.withdraw} />,

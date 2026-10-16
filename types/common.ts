@@ -33,7 +33,10 @@ export type ErrorCode =
   | "EMAIL_TAKEN"
   | "INVALID_CODE"
   | "CODE_EXPIRED"
-  | "INVALID_CREDENTIALS";
+  | "INVALID_CREDENTIALS"
+  | "CONFLICT"
+  | "INTERNAL_ERROR"
+  | "SERVICE_UNAVAILABLE";
 
 export interface ApiErrorBody {
   error: {

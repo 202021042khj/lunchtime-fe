@@ -6,6 +6,7 @@ import { overlay } from "overlay-kit";
 import { FormEvent, useState } from "react";
 import Button from "@/components/ui/button";
 import { DialogOverlay, DialogPortal } from "@/components/ui/dialog";
+import { openLoginRequired } from "@/components/domain/LoginRequiredModal";
 import { notify } from "@/components/ui/notify/notify-utils";
 import { REPORT_REASONS, REVIEW_LIMITS } from "@/constants/review";
 import { ApiError } from "@/lib/api/client";
@@ -37,7 +38,6 @@ export function openReportReview(review: Review) {
 const ERROR_MESSAGES: Partial<Record<string, string>> = {
   ALREADY_REPORTED: "이미 신고한 리뷰예요.",
   FORBIDDEN: "내 리뷰는 신고할 수 없어요.",
-  UNAUTHORIZED: "신고하려면 로그인이 필요해요.",
   USER_SUSPENDED: "이용이 정지된 동안에는 신고할 수 없어요.",
 };
 
@@ -57,6 +57,7 @@ export default function ReportReviewModal({ isOpen, review, onClose }: ReportRev
       onClose();
     } catch (error) {
       const code = error instanceof ApiError ? error.code : "";
+      if (code === "UNAUTHORIZED") return openLoginRequired("report");
       notify.error(ERROR_MESSAGES[code] ?? "신고하지 못했어요. 잠시 후 다시 시도해 주세요.");
       if (code === "ALREADY_REPORTED" || code === "FORBIDDEN") onClose();
     } finally {

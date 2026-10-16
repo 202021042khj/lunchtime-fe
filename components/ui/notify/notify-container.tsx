@@ -6,7 +6,8 @@ const NotifyContainer = () => {
   return (
     <ToastContainer
       position="top-center"
-      autoClose={1000}
+      // 한 줄 안내를 읽을 시간 (되돌리기처럼 버튼이 있는 토스트는 호출하는 쪽에서 더 길게)
+      autoClose={2500}
       closeOnClick={true}
       closeButton={false}
       hideProgressBar={true}

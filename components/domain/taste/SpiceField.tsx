@@ -20,7 +20,7 @@ export default function SpiceField({ form }: { form: TasteForm }) {
             aria-checked={selected}
             onClick={() => form.setSpiceLevel(selected ? null : level)}
             className={cn(
-              "min-h-9 flex-1 rounded-full px-1 py-2 text-center text-footnote break-keep transition-colors",
+              "min-h-9 flex-1 rounded-full px-0.5 py-2 text-center text-[12px] whitespace-nowrap transition-colors md:px-1 md:text-footnote",
               selected ? "bg-white font-semibold text-labels-primary shadow-[0_3px_8px_rgba(0,0,0,0.08)]" : "text-labels-secondary hover:text-labels-primary",
             )}
           >

@@ -9,6 +9,7 @@ import FoodImage from "@/components/common/FoodImage";
 import SelectChip from "@/components/common/SelectChip";
 import Button from "@/components/ui/button";
 import { DialogOverlay, DialogPortal } from "@/components/ui/dialog";
+import { openLoginRequired } from "@/components/domain/LoginRequiredModal";
 import { notify } from "@/components/ui/notify/notify-utils";
 import { RATING_LABELS, REVIEW_LIMITS } from "@/constants/review";
 import { ApiError } from "@/lib/api/client";
@@ -81,7 +82,6 @@ const ERROR_MESSAGES: Partial<Record<string, string>> = {
   REVIEW_DAILY_LIMIT: "이 식당에는 오늘 이미 리뷰를 썼어요. 내일 다시 남겨 주세요.",
   REVIEW_TOO_LONG: "후기는 500자까지 쓸 수 있어요.",
   TOO_MANY_PHOTOS: "사진은 5장까지 올릴 수 있어요.",
-  UNAUTHORIZED: "리뷰를 쓰려면 로그인이 필요해요.",
   USER_SUSPENDED: "이용이 정지된 동안에는 리뷰를 쓸 수 없어요.",
 };
 
@@ -199,6 +199,8 @@ export default function WriteReviewModal({ isOpen, place, editing = null, onClos
       onClose();
     } catch (error) {
       const code = error instanceof ApiError ? error.code : "";
+      // 세션이 끝났으면 로그인 팝업을 모달 위에 띄운다 ("다음에 할게요"면 쓰던 내용이 그대로 남는다)
+      if (code === "UNAUTHORIZED") return openLoginRequired("review");
       notify.error(ERROR_MESSAGES[code] ?? `리뷰를 ${editing ? "수정" : "등록"}하지 못했어요. 잠시 후 다시 시도해 주세요.`);
     } finally {
       setSubmitting(false);

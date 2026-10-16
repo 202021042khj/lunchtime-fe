@@ -89,7 +89,7 @@ export function createAdminRoutes(deps: { removeReview: (reviewId: string) => vo
       const { days = null, reason = "" } = (body ?? {}) as Partial<SuspendUserInput>;
       if (!reason.trim()) fail(400, "VALIDATION_FAILED", "정지 사유를 적어 주세요.");
       const user = findUser(params.id);
-      if (user.status === "withdrawn") fail(409, "VALIDATION_FAILED", "탈퇴한 유저는 정지할 수 없어요.");
+      if (user.status === "withdrawn") fail(409, "CONFLICT", "탈퇴한 유저는 정지할 수 없어요.");
       suspend(user, days);
       return user;
     },
@@ -128,7 +128,7 @@ export function createAdminRoutes(deps: { removeReview: (reviewId: string) => vo
       const { action, suspendAuthorDays } = (body ?? {}) as Partial<ResolveReportInput>;
       if (action !== "dismiss" && action !== "delete") fail(400, "VALIDATION_FAILED", "처리 방법을 골라 주세요.");
       const report: ReportGroup = state.reports.find((r) => r.review.id === params.reviewId) ?? fail(404, "NOT_FOUND", "신고를 찾을 수 없어요.");
-      if (report.status === "resolved") fail(409, "VALIDATION_FAILED", "이미 처리한 신고예요.");
+      if (report.status === "resolved") fail(409, "CONFLICT", "이미 처리한 신고예요.");
       report.status = "resolved";
       report.resolution = action === "delete" ? "deleted" : "dismissed";
       if (action === "delete") {

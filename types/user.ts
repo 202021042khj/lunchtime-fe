@@ -79,3 +79,9 @@ export interface PasswordResetRequest {
   password: string;
   verificationToken: string;
 }
+
+// POST /me/password — 이메일 계정만 → 204
+export interface ChangePasswordRequest {
+  currentPassword: string;
+  newPassword: string;
+}

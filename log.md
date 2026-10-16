@@ -708,3 +708,94 @@ Figma `04 Write Review`(24:480), `11 All Reviews`(36:1523), `11 Report Review`(3
 - 어드민 메뉴 · 광고를 사용자 앱 추천 · 지도에 연결하는 건 백엔드 단계에서 (목은 따로 움직임)
 - 메뉴 이미지 올리기(사진 저장소 미결정), 메뉴 제보 확인 화면(`/admin/menu-reports`)은 범위 밖
 - 1단계(프론트 + 목) 화면은 모두 만들었다. 다음은 토스트 브랜드 스타일 · 식당 행 접근성 정리 같은 마무리, 또는 2단계 백엔드
+
+
+## 1단계-14 · 1단계 마무리 (2026-10-16)
+
+2단계 백엔드 전에 "남은 것"에 쌓인 프론트 마무리를 했다(사용자 선택: 마무리 후 백엔드). 백엔드 스택은 아직 미정이라, 마무리 뒤 비교 자료로 정하기로 했다.
+
+**만든 것 · 고친 것**
+- 토스트 브랜드 스타일 (`components/ui/notify/`)
+  - 흰 유리 알약 + 성공은 브랜드 색 체크, 오류는 빨간 느낌표(lucide). 긴 문구는 줄바꿈(최대 480px)
+  - 위치: 데스크톱은 메뉴바 아래(140px), 모바일은 상태바 아래
+  - 기본 노출 1초 → 2.5초, "찜을 해제했어요 [되돌리기]"는 5초
+  - `role="status"` / 오류는 `role="alert"`
+  - **바깥 흰 사각 테두리가 겹쳐 보이던 문제(사용자 제보)**
+    - react-toastify v11은 실행 중에 자기 스타일을 `<head>` 맨 뒤에 넣는다. 그래서 globals.css의 같은 선택자 덮어쓰기가 졌다(import 순서와 무관)
+    - `:root .Toastify__…`로 우선순위를 올려 바깥 상자를 투명 · 그림자 없음으로 했다
+    - 컨테이너는 좌우 16px 전체 폭에 알약만 가운데 두고, 빈 곳은 클릭이 지나가게 했다(모바일에서 문구가 반쪽 폭에 갇혀 두 줄 되던 것도 해결)
+- 식당 행 · 카드 접근성 ("버튼 안 버튼" 제거) — `RestaurantRow` · `RestaurantCard`
+  - 행 · 카드를 누르는 부분은 진짜 `<button>`(행은 `aria-pressed`로 선택 표시)이고, 찜 버튼은 그 **형제**다
+  - 키보드: Tab으로 행 → 찜 버튼 순서, Enter로 열기 · 찜. 보이는 모양은 그대로
+  - 홈 · 지도 · 찜 · 검색 모두 자동 반영
+- 리뷰 쓰기 · 리뷰 신고 중 401(세션 만료) → 토스트 대신 로그인 필요 팝업
+  - 계획과 달리 모달은 닫지 않고 그 위에 띄운다. "다음에 할게요"를 누르면 쓰던 내용이 그대로 남는다
+- 모바일 맵기 세그먼트: 402px에서 "아주 매운맛"이 두 줄 → 모바일만 12px · 줄바꿈 없음
+- MY "비밀번호 바꾸기" (이메일 계정만, `ChangePasswordDialog`)
+  - 현재 · 새 · 확인 입력, 규칙은 `lib/validation` 재사용
+  - **새 API `POST /me/password`** `{ currentPassword, newPassword }` → 204. 현재 비밀번호가 틀리면 401 `INVALID_CREDENTIALS`, 소셜 계정 · 규칙 위반 · 같은 비밀번호는 400 (API.md 반영)
+- 문서
+  - `README.md`: 템플릿 설명 → lunchtime 소개, 실행 · 환경 변수, 화면 목록, 테스트 계정, 목 시나리오, localStorage 초기화, 폴더 구조
+  - `docs/ARCHITECTURE.md`: "lunchtime additions" — 어드민 단일 페이지 규칙, 단독 화면 · Suspense, `domain/{auth,taste,admin}`, 세션 스토어 2개, API 클라이언트 옵션 · 목 파일 구성, 디바운스 URL 규칙, 접근성 규칙
+
+**모바일 지도를 끌어도 안 움직인다 (사용자 제보) — 원인 확인, 코드 변경 없음**
+- 재현: 실제 터치 이벤트로 끌면 안 움직이고, 마우스로 끌면 움직였다
+- 카카오 지도 SDK는 **불러올 때 기기를 보고** 터치용과 마우스용 중 하나만 연결한다. 확인해 보니 지도 컨테이너에 마우스 리스너만 있었다
+- 휴대폰 사용자 에이전트(iPhone · Android)로 열면 터치로 잘 끌린다(확인함)
+- 그래서 안 되는 경우는 둘이다
+  - 데스크톱 크롬에서 페이지를 연 **뒤에** 개발자 도구 기기 모드로 바꾼 경우 → 기기 모드에서 새로 고치면 된다
+  - 터치스크린 노트북 + 데스크톱 브라우저
+- 실제 휴대폰 · 웹뷰에는 문제없다. 터치스크린 노트북 대응이 필요해지면 터치 → 지도 이동을 직접 잇는 처리를 검토한다
+
+**확인한 것**
+- `tsc --noEmit`, `eslint .` 에러 0
+- 이번 단계 Playwright 20개 모두 통과
+  - 홈 · 지도 · 검색 · 찜에 버튼 안 버튼 0개, 찜 버튼을 role로 바로 찾음
+  - 카드 Tab · Enter · 찜 해제 버튼 포커스, 지도 행 Enter → 선택
+  - 되돌리기 토스트 3.5초 뒤에도 남음 · 되돌리기
+  - 리뷰 등록 401 → 팝업(모달 · 별점 유지)
+  - 402px 맵기 5칸 한 줄(높이 36)
+  - 비밀번호: 소셜은 메뉴 없음 · 규칙 · 틀린 현재 · 변경 → 옛 비밀번호 실패 · 새 비밀번호 로그인
+- 토스트 캡처: 바깥 상자 투명 · 그림자 없음 · 알약 폭 그대로(데스크톱 140px, 모바일 12px 위치)
+- 회귀(지난 점검 전부 다시): 지도 · 다시 검색 · 리뷰 · 찜/MY · 온보딩(모바일) · 로그인 · 이메일 · 검색 · 어드민 1/2 — 총 260여 개 통과
+  - 예전부터 있던 테스트 환경 문제 2개(Windows Web Share, 화면 밖 핀)는 그대로
+  - 행 구조가 바뀌어 테스트 선택자(`[role=button]`)를 고쳤다
+  - 한꺼번에 돌릴 때 "다시 검색 제자리" 측정이 19px 흔들렸는데, 혼자 돌리면 정확히 제자리(측정 타이밍 문제)
+- 확인용 dev 서버(3000)와 Chrome은 확인 후 껐다
+
+**남은 것 · 확인 필요**
+- 템플릿 예제 화면 `app/example` · `components/pages/example` · `hooks/usePost*Logic.ts` (+ `constants/posts.ts` · `types/post.ts`)는 쓰이지 않는다 → 지울지 사용자 확인 필요
+- 다음: 2단계 백엔드 — 스택 비교 후 결정
+
+## 1단계-15 · 템플릿 예제 삭제 + 백엔드 스택 결정 (2026-10-16)
+
+**결정 (사용자)**
+- 백엔드는 NestJS + PostgreSQL + Prisma로 한다
+- 저장소는 따로 `workspace/lunchtime-be`(별도 git)에 둔다. 프론트 저장소는 건드리지 않는다
+- 개발 DB는 Docker Desktop의 docker-compose(Postgres + Redis)로 띄운다
+- Nest는 정해진 좋은 템플릿이 없으므로, Nest CLI 기본 뼈대 위에 구조를 직접 정해 `lunchtime-be/docs/CONVENTIONS.md`로 남긴다. 계약은 이 저장소의 `API.md`
+- plan.md "결정된 사항" · "미결정 사항"에 반영
+
+**지운 것**
+- `app/example/` (`/example`, `/example/[id]`)
+- `components/pages/example/` 전체
+- `hooks/usePostsListLogic.ts`, `hooks/usePostDetailLogic.ts`
+- `constants/posts.ts`, `types/post.ts`
+- `components/common/Badge.tsx`: 예제에서만 썼다. 어드민은 `AdminStatusBadge`를 쓴다
+
+**문서**
+- `docs/ARCHITECTURE.md`에서 예제를 가리키던 곳을 실제 화면으로 바꿨다
+  - 짝 예: `components/pages/map/` + `hooks/useMapLogic.ts`
+  - 중첩 라우트: `login-email`, `admin/menus`
+  - 공용 · 분리 섹션 표: 홈 섹션(`TasteBannerSection`, `DesktopHeroSection` / `MobileHeroSection` 등)
+  - 타입 · 상수 예: `types/restaurant.ts`, `constants/weather.ts` 등
+  - "예제는 지워라" 문단은 지우고, Route groups 절에 `(main)` · `admin/(console)` 설명을 넣었다
+
+**확인한 것**
+- 예제 · `Badge` 참조 grep 0건
+- `tsc --noEmit`, `eslint .` 에러 0
+- `next build` 성공: 라우트 19개, `/example` 없음
+
+**다음**
+- 2단계 백엔드 기록은 `lunchtime-be/log.md`에 남긴다
+- (2026-10-16) 2단계-0에서 API.md 에러 코드 3개(`CONFLICT` · `INTERNAL_ERROR` · `SERVICE_UNAVAILABLE`)를 추가했다. `types/common.ts`와 목의 상태 충돌 409(`VALIDATION_FAILED` → `CONFLICT`)도 맞췄다. 자세한 내용은 `../lunchtime-be/log.md`

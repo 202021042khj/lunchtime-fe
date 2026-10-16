@@ -1,6 +1,7 @@
 import { request } from "@/lib/api/client";
 import { clearTokens, getRefreshToken, saveTokens } from "@/lib/api/token";
 import {
+  ChangePasswordRequest,
   EmailCodeRequest,
   EmailCodeResponse,
   EmailLoginRequest,
@@ -57,4 +58,9 @@ export async function loginWithEmail(input: EmailLoginRequest): Promise<LoginRes
 
 export function resetPassword(input: PasswordResetRequest): Promise<void> {
   return request<void>("POST", "/auth/email/password-reset", { body: input });
+}
+
+// 이메일 계정 비밀번호 바꾸기 (MY). 현재 비밀번호가 틀리면 401 INVALID_CREDENTIALS
+export function changePassword(input: ChangePasswordRequest): Promise<void> {
+  return request<void>("POST", "/me/password", { body: input });
 }

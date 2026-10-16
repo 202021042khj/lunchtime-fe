@@ -309,8 +309,6 @@
   --z-index-toast: 100;
 
   /* box shadows (ported from admin-template tailwind.config.ts) */
-  --shadow-notify-success: 0px 2px 8px 0px rgba(164, 192, 255, 0.6);
-  --shadow-notify-error: 0px 2px 8px 0px rgba(255, 100, 103, 0.2);
   --shadow-pop-over: 0px 0px 4px 0px #cfcfcf;
   --shadow-pop-over-more: 0px 2px 10px 0px rgba(189, 189, 189, 0.5);
 
@@ -353,42 +351,62 @@ body {
   max-height: var(--radix-popover-content-available-height);
 }
 
-/* Toastify (custom overrides for react-toastify, used by Notify) */
-.Toastify__toast-container {
-  width: fit-content;
-}
-.Toastify__toast-container--top-center {
-  top: 73px;
+/* Toastify (custom overrides for react-toastify, used by Notify)
+   react-toastify v11은 실행 중에 자기 스타일을 <head> 맨 뒤에 넣는다. 같은 선택자로는 지므로 :root를 붙여 우선순위를 올린다.
+   토스트 모양(흰 유리 알약)은 Notify 안에서 그리고, 바깥 상자는 투명하게 둔다 — 안 그러면 흰 사각 테두리가 겹쳐 보인다 */
+/* 컨테이너는 화면 폭 전체(좌우 16px)로 두고 알약만 가운데에. 빈 곳은 클릭이 지나가게 한다 */
+:root .Toastify__toast-container {
+  left: 16px;
+  right: 16px;
+  width: auto;
+  transform: none;
+  margin: 0;
+  padding: 0;
   align-items: center;
+  pointer-events: none;
 }
-.Toastify__toast {
+:root .Toastify__toast-container--top-center {
+  /* 데스크톱 메뉴바(128px) 아래 */
+  top: 140px;
+}
+:root .Toastify__toast {
   display: flex;
   justify-content: center;
   align-items: center;
-  background-color: transparent;
+  pointer-events: auto;
+  background: transparent;
   border-radius: 100px;
   width: fit-content;
   min-height: fit-content;
   box-shadow: none;
   padding: 0;
+  margin: 0 auto 8px;
 }
-.Toastify__toast.fade-in {
+:root .Toastify__toast.fade-in {
   animation: toast-fade-in 0.2s ease-in-out;
 }
-.Toastify__toast.fade-out {
+:root .Toastify__toast.fade-out {
   animation: toast-fade-out 0.2s ease-in-out;
 }
-.Toastify__toast-theme--light,
-.Toastify__toast-theme--colored.Toastify__toast--default {
-  background-color: transparent;
+:root .Toastify__toast-theme--light,
+:root .Toastify__toast-theme--colored.Toastify__toast--default {
+  background: transparent;
 }
 
-@media (max-width: 480px) {
-  .Toastify__toast-container {
-    top: 73px;
-    left: 50%;
-    transform: translate(-50%);
-    align-items: center;
+@media (max-width: 767px) {
+  /* 모바일: 상태바(safe-area) 아래 */
+  :root .Toastify__toast-container,
+  :root .Toastify__toast-container--top-center {
+    top: calc(env(safe-area-inset-top) + 12px);
+    left: 16px;
+    right: 16px;
+    width: auto;
+    transform: none;
+  }
+  :root .Toastify__toast {
+    width: fit-content;
+    border-radius: 100px;
+    margin-bottom: 8px;
   }
 }
 

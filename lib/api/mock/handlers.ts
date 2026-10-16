@@ -36,6 +36,7 @@ import {
 import { MenuEvidence, RatingSummary, Restaurant, RestaurantDetail, RestaurantSort } from "@/types/restaurant";
 import { ReportReason, Review, ReviewInput, ReviewSort } from "@/types/review";
 import {
+  ChangePasswordRequest,
   EmailCodeRequest,
   EmailLoginRequest,
   EmailSignupRequest,
@@ -548,6 +549,17 @@ const routes: Record<string, Handler> = {
     }
     loginFailures.delete(email);
     return emailLoginResponse(account, false);
+  },
+  "POST /me/password": ({ body }) => {
+    requireUser();
+    const { currentPassword = "", newPassword = "" } = (body ?? {}) as Partial<ChangePasswordRequest>;
+    const account = findAccount(readStorage<string | null>(ACCOUNT_KEY, null) ?? "");
+    if (!account) fail(400, "VALIDATION_FAILED", "소셜 로그인 계정은 비밀번호가 없어요.");
+    if (account.password !== currentPassword) fail(401, "INVALID_CREDENTIALS", "현재 비밀번호가 맞지 않아요.");
+    const problem = checkPassword(newPassword);
+    if (problem) fail(400, "VALIDATION_FAILED", problem);
+    if (newPassword === currentPassword) fail(400, "VALIDATION_FAILED", "지금과 다른 비밀번호로 정해 주세요.");
+    saveAccount({ ...account, password: newPassword });
   },
   "POST /auth/email/password-reset": ({ body }) => {
     const input = body as PasswordResetRequest;

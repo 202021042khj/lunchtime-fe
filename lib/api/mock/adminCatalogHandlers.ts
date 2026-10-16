@@ -25,7 +25,7 @@ function validateMenu(input: Partial<MenuInput>, selfId?: string): void {
   if (!input.ingredients?.length) fail(400, "VALIDATION_FAILED", "주요 재료를 하나 이상 넣어 주세요.");
   if (input.spiceLevel === undefined || input.spiceLevel < 0 || input.spiceLevel > 4) fail(400, "VALIDATION_FAILED", "맵기를 골라 주세요.");
   const name = input.name.trim();
-  if (state.menus.some((m) => m.name === name && m.id !== selfId)) fail(409, "VALIDATION_FAILED", `'${name}' 메뉴가 이미 있어요.`);
+  if (state.menus.some((m) => m.name === name && m.id !== selfId)) fail(409, "CONFLICT", `'${name}' 메뉴가 이미 있어요.`);
 }
 
 function cleanMenu(input: MenuInput): MenuInput {
@@ -234,7 +234,7 @@ export function createAdminCatalogRoutes(): Record<string, AdminHandler> {
     "PATCH /admin/sponsored/:id": ({ params, body }) => {
       requireAdmin();
       const target = findSponsored(params.id);
-      if (statusOf(target) === "ended") fail(409, "VALIDATION_FAILED", "종료된 광고는 고칠 수 없어요. 재등록해 주세요.");
+      if (statusOf(target) === "ended") fail(409, "CONFLICT", "종료된 광고는 고칠 수 없어요. 재등록해 주세요.");
       const merged = { ...target, ...(body as Partial<SponsoredInput>), place: target.place };
       validateSponsored(merged, false);
       Object.assign(target, merged);
@@ -243,7 +243,7 @@ export function createAdminCatalogRoutes(): Record<string, AdminHandler> {
     "POST /admin/sponsored/:id/renew": ({ params, body }) => {
       requireAdmin();
       const original = findSponsored(params.id);
-      if (statusOf(original) !== "ended") fail(409, "VALIDATION_FAILED", "종료된 광고만 재등록할 수 있어요.");
+      if (statusOf(original) !== "ended") fail(409, "CONFLICT", "종료된 광고만 재등록할 수 있어요.");
       const input = { ...(body as Omit<SponsoredInput, "place">), place: original.place };
       validateSponsored(input, true);
       const created: MockSponsored = { ...input, id: newId("sp"), canceled: false, impressions: 0, clicks: 0 };
@@ -253,7 +253,7 @@ export function createAdminCatalogRoutes(): Record<string, AdminHandler> {
     "DELETE /admin/sponsored/:id": ({ params }) => {
       requireAdmin();
       const target = findSponsored(params.id);
-      if (statusOf(target) === "ended") fail(409, "VALIDATION_FAILED", "이미 종료된 광고예요.");
+      if (statusOf(target) === "ended") fail(409, "CONFLICT", "이미 종료된 광고예요.");
       target.canceled = true;
     },
   };
