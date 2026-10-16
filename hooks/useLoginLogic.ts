@@ -6,6 +6,7 @@ import { notify } from "@/components/ui/notify/notify-utils";
 import { afterLoginRoute, ROUTES, safeNext, withNext } from "@/constants/navigation";
 import { ApiError } from "@/lib/api/client";
 import { loginWith } from "@/lib/sessionStore";
+import { startSocialLogin, usesSocialRedirect } from "@/lib/socialLogin";
 import { SocialProvider } from "@/types/user";
 
 export interface UseLoginLogicResult {
@@ -24,6 +25,11 @@ export function useLoginLogic(): UseLoginLogicResult {
   const login = async (provider: SocialProvider) => {
     setPending(provider);
     try {
+      // 웹 카카오 · 구글은 각 회사 로그인 화면으로 이동한다. 돌아오면 /login/<회사>/callback이 마무리
+      if (usesSocialRedirect(provider)) {
+        startSocialLogin(provider, next);
+        return;
+      }
       const res = await loginWith(provider);
       if (res.user.onboardingCompleted) notify.success("로그인했어요.");
       router.replace(afterLoginRoute(res.user.onboardingCompleted, next));

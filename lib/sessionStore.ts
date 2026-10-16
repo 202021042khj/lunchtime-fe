@@ -69,6 +69,13 @@ export async function loginWith(provider: SocialProvider): Promise<LoginResponse
   return res;
 }
 
+// 웹(카카오 · 구글): 리다이렉트로 받은 인가 코드로 로그인
+export async function loginWithSocialCode(provider: SocialProvider, code: string, redirectUri: string): Promise<LoginResponse> {
+  const res = await login({ provider, code, redirectUri });
+  await refreshSession();
+  return res;
+}
+
 // 이메일 계정 로그인 · 가입도 끝나면 내 정보를 다시 불러온다
 export async function loginWithEmailAccount(input: EmailLoginRequest): Promise<LoginResponse> {
   const res = await loginWithEmail(input);

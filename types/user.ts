@@ -20,10 +20,11 @@ export interface User {
   stats: UserStats;
 }
 
-export interface LoginRequest {
-  provider: SocialProvider;
-  providerToken: string;
-}
+// 앱(웹뷰): providerToken, 웹(카카오 · 구글): code + redirectUri (인가 코드 리다이렉트).
+// Apple은 첫 로그인 때만 이름을 주므로 앱이 name을 같이 보낸다
+export type LoginRequest =
+  | { provider: SocialProvider; providerToken: string; name?: string }
+  | { provider: SocialProvider; code: string; redirectUri: string; name?: string };
 
 export interface AuthTokens {
   accessToken: string;

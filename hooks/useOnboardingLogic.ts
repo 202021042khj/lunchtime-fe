@@ -38,19 +38,20 @@ export function useOnboardingLogic(): UseOnboardingLogicResult {
   const nextParam = searchParams.get("next");
   const step = Math.min(Math.max(Number(searchParams.get("step")) || 1, 1), total);
   const form = useTasteForm();
-  const { reset: resetForm } = form;
+  const { prefill } = form;
   const [saving, setSaving] = useState(false);
 
-  // 이미 고른 취향이 있으면 채워 둔다 (비로그인이면 빈 값으로 시작)
+  // 이미 고른 취향이 있으면 채워 둔다 (비로그인이면 빈 값으로 시작).
+  // 응답보다 먼저 사용자가 고르기 시작했으면 고른 값을 그대로 둔다
   useEffect(() => {
     let cancelled = false;
     getMyPreferences()
-      .then((prefs) => !cancelled && resetForm(prefs))
+      .then((prefs) => !cancelled && prefill(prefs))
       .catch(() => {});
     return () => {
       cancelled = true;
     };
-  }, [resetForm]);
+  }, [prefill]);
 
   const stepUrl = (n: number) => {
     const params = new URLSearchParams({ step: String(n) });

@@ -11,6 +11,7 @@ import { DialogOverlay, DialogPortal } from "@/components/ui/dialog";
 import { notify } from "@/components/ui/notify/notify-utils";
 import { ROUTES, withNext } from "@/constants/navigation";
 import { getSession, loginWith, setFlash } from "@/lib/sessionStore";
+import { startSocialLogin, usesSocialRedirect } from "@/lib/socialLogin";
 
 // 어떤 동작에서 막혔는지에 따라 아이콘 · 문구만 바꾼다 (Figma 09 Login Required는 찜)
 export type LoginReason = "favorite" | "review" | "report" | "menuReport" | "taste";
@@ -61,6 +62,11 @@ export default function LoginRequiredModal({ isOpen, reason, onClose }: LoginReq
   const loginKakao = async () => {
     setPending(true);
     try {
+      // 웹 카카오는 카카오 로그인 화면으로 이동했다가 지금 화면으로 돌아온다 (페이지가 새로 열리므로 데이터도 다시 받는다)
+      if (usesSocialRedirect("kakao")) {
+        startSocialLogin("kakao", currentPath());
+        return;
+      }
       const res = await loginWith("kakao");
       onClose();
       if (!res.user.onboardingCompleted) {

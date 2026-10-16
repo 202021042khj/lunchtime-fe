@@ -799,3 +799,6 @@ Figma `04 Write Review`(24:480), `11 All Reviews`(36:1523), `11 Report Review`(3
 **다음**
 - 2단계 백엔드 기록은 `lunchtime-be/log.md`에 남긴다
 - (2026-10-16) 2단계-0에서 API.md 에러 코드 3개(`CONFLICT` · `INTERNAL_ERROR` · `SERVICE_UNAVAILABLE`)를 추가했다. `types/common.ts`와 목의 상태 충돌 409(`VALIDATION_FAILED` → `CONFLICT`)도 맞췄다. 자세한 내용은 `../lunchtime-be/log.md`
+- (2026-10-16) 2단계-1b: 웹 카카오 로그인(`/login/kakao/callback`), `NEXT_PUBLIC_API_REAL_AUTH`(로그인 · 내 정보만 실서버), `LoginRequest` 코드 방식 추가. 자세한 내용은 `../lunchtime-be/log.md`
+- (2026-10-16) 2단계-1c: 콜백을 `/login/[provider]/callback`로 합침(카카오 · 구글), 애플 버튼 "(서비스 준비 중)" 비활성화, `NEXT_PUBLIC_GOOGLE_CLIENT_ID`. 자세한 내용은 `../lunchtime-be/log.md`
+- (2026-10-16) 2단계-2: `NEXT_PUBLIC_API_REAL=auth,taste,locations`(기능 묶음별 실서버), 실서버 취향을 목에도 반영, 온보딩에서 늦게 온 기존 취향이 고른 값을 지우던 버그 수정(`useTasteForm.prefill`). 자세한 내용은 `../lunchtime-be/log.md`

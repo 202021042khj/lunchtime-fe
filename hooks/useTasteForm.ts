@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { getPreferenceOptions, searchIngredients } from "@/lib/api/preferences";
 import { PreferenceOptions, Preferences, SpiceLevel } from "@/types/preferences";
 
@@ -15,6 +15,8 @@ export interface TasteForm {
   setSpiceLevel: (level: SpiceLevel | null) => void;
   clearField: (field: ListField | "spiceLevel") => void;
   reset: (value: Preferences) => void;
+  // 사용자가 아직 아무것도 고르지 않았을 때만 채운다 (늦게 온 응답이 고른 값을 지우지 않게)
+  prefill: (value: Preferences) => void;
   // 목록에 없는 재료 검색 → 추가
   ingredientQuery: string;
   setIngredientQuery: (q: string) => void;
@@ -24,7 +26,14 @@ export interface TasteForm {
 
 // 취향 설정 · 온보딩이 같이 쓰는 입력 상태 (기능명세 2 · 5)
 export function useTasteForm(initial: Preferences = EMPTY_PREFERENCES): TasteForm {
-  const [value, setValue] = useState<Preferences>(initial);
+  const [value, setValueState] = useState<Preferences>(initial);
+  // 사용자가 직접 고쳤는지. 고친 뒤에는 prefill이 덮어쓰지 않는다
+  const touched = useRef(false);
+  const setValue: typeof setValueState = (next) => {
+    touched.current = true;
+    setValueState(next);
+  };
+  const prefill = useCallback((v: Preferences) => setValueState((cur) => (touched.current ? cur : v)), []);
   const [options, setOptions] = useState<PreferenceOptions | null>(null);
   const [ingredientQuery, setIngredientQuery] = useState("");
   const [search, setSearch] = useState<{ q: string; items: string[] }>({ q: "", items: [] });
@@ -73,7 +82,8 @@ export function useTasteForm(initial: Preferences = EMPTY_PREFERENCES): TasteFor
     toggle,
     setSpiceLevel: (spiceLevel) => setValue((v) => ({ ...v, spiceLevel })),
     clearField: (field) => setValue((v) => ({ ...v, [field]: field === "spiceLevel" ? null : [] })),
-    reset: setValue,
+    reset: setValueState,
+    prefill,
     ingredientQuery,
     setIngredientQuery,
     ingredientResults,

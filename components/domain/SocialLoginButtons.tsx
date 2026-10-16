@@ -1,6 +1,7 @@
 import { Mail, MessageCircle } from "lucide-react";
 import Link from "next/link";
 import Loading from "@/components/ui/loading";
+import { UNAVAILABLE_PROVIDERS } from "@/lib/socialLogin";
 import { cn } from "@/lib/utils";
 import { SocialProvider } from "@/types/user";
 
@@ -22,15 +23,18 @@ interface SocialLoginButtonProps {
 // 소셜 로그인 버튼 하나 (로그인 화면 · 로그인 필요 팝업 공용)
 export function SocialLoginButton({ provider, loading, disabled, onClick, className }: SocialLoginButtonProps) {
   const style = STYLES[provider];
+  // 아직 열지 않은 로그인(Apple)은 누를 수 없고 "서비스 준비 중"을 작게 붙인다
+  const unavailable = UNAVAILABLE_PROVIDERS.includes(provider);
   return (
     <button
       type="button"
       onClick={onClick}
-      disabled={disabled}
+      disabled={disabled || unavailable}
       aria-busy={loading}
       className={cn(
         "flex h-[52px] w-full items-center justify-center gap-2 rounded-[14px] text-headline transition-[filter] hover:brightness-[0.97] disabled:cursor-default",
-        disabled && !loading && "opacity-60",
+        (disabled || unavailable) && !loading && "opacity-60",
+        unavailable && "hover:brightness-100",
         style.className,
         className,
       )}
@@ -41,6 +45,7 @@ export function SocialLoginButton({ provider, loading, disabled, onClick, classN
         <>
           {provider === "kakao" && <MessageCircle aria-hidden className="size-[18px] fill-current" />}
           {style.label}
+          {unavailable && <span className="text-caption-1 font-normal opacity-80">(서비스 준비 중)</span>}
         </>
       )}
     </button>

@@ -5,6 +5,35 @@ import { clearTokens, getAccessToken, getAdminAccessToken, getRefreshToken, save
 const BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL ?? "https://api.lunchtime.example/v1";
 // 백엔드가 생기기 전까지 기본은 목. 실서버를 쓰려면 NEXT_PUBLIC_API_MOCK=false
 export const USE_MOCK = process.env.NEXT_PUBLIC_API_MOCK !== "false";
+// 2단계 중간 확인용: 목을 쓰면서 백엔드가 만들어진 기능만 실서버로 보낸다.
+// NEXT_PUBLIC_API_REAL=auth,taste,locations (쉼표로 기능 묶음). 백엔드 단계가 끝날 때마다 묶음을 늘린다
+const REAL_GROUPS: Record<string, (path: string) => boolean> = {
+  auth: (p) => p.startsWith("/auth/") || p === "/me" || p === "/me/password",
+  taste: (p) => p === "/me/preferences" || p.startsWith("/preferences/") || p === "/ingredients",
+  locations: (p) => p === "/me/locations" || p.startsWith("/me/locations/") || p.startsWith("/locations/"),
+};
+const REAL = USE_MOCK
+  ? (process.env.NEXT_PUBLIC_API_REAL ?? "")
+      .split(",")
+      .map((g) => REAL_GROUPS[g.trim()])
+      .filter(Boolean)
+  : [];
+
+// 이 경로를 목으로 처리하는지
+export const usesMock = (path: string) => USE_MOCK && !REAL.some((isReal) => isReal(path));
+
+// 실서버 응답을 목에도 알려, 아직 목인 화면(추천 등)이 같은 상태로 보이게 맞춘다
+//  - 로그인 · 로그아웃 · 탈퇴 → 목 로그인 상태
+//  - 내 취향 읽기 · 저장 → 목 취향 (홈 추천의 personal · popular 모드)
+const SIGN_IN_PATHS = ["/auth/login", "/auth/email/login", "/auth/email/signup"];
+async function syncMock(method: HttpMethod, path: string, result: unknown) {
+  const mock = await import("@/lib/api/mock/handlers");
+  if (SIGN_IN_PATHS.includes(path)) mock.setMockSignedIn(true);
+  else if (path === "/auth/logout" || (method === "DELETE" && path === "/me")) mock.setMockSignedIn(false);
+  else if (path === "/me/preferences" && (method === "GET" || method === "PUT")) {
+    await mock.handleMock("PUT", "/me/preferences", new URLSearchParams(), result).catch(() => undefined);
+  }
+}
 
 export type HttpMethod = "GET" | "POST" | "PUT" | "PATCH" | "DELETE";
 
@@ -91,7 +120,7 @@ async function toApiError(res: Response): Promise<ApiError> {
 }
 
 export async function request<T>(method: HttpMethod, path: string, options: RequestOptions = {}): Promise<T> {
-  if (USE_MOCK) {
+  if (usesMock(path)) {
     const { handleMock } = await import("@/lib/api/mock/handlers");
     return handleMock(method, path, toSearchParams(options.query), options.form ?? options.body) as Promise<T>;
   }
@@ -102,7 +131,8 @@ export async function request<T>(method: HttpMethod, path: string, options: Requ
     res = await send(method, path, options);
   }
   if (!res.ok) throw await toApiError(res);
-  if (res.status === 204) return undefined as T;
-  if (options.text) return (await res.text()) as T;
-  return (await res.json()) as T;
+  let result: unknown = undefined;
+  if (res.status !== 204) result = options.text ? await res.text() : await res.json();
+  if (REAL.length) await syncMock(method, path, result);
+  return result as T;
 }

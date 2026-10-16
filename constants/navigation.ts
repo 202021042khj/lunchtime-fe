@@ -23,6 +23,9 @@ export const ADMIN_ROUTES = {
   reports: "/admin/reports",
 } as const;
 
+// 소셜 로그인(웹)에서 돌아오는 곳: /login/kakao/callback · /login/google/callback
+export const socialCallbackRoute = (provider: string) => `/login/${provider}/callback`;
+
 export const mapRoute = (menuId?: string) => (menuId ? `${ROUTES.map}?menuId=${menuId}` : ROUTES.map);
 
 // 로그인 · 온보딩 뒤 돌아갈 곳을 ?next=로 넘긴다

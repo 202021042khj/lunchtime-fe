@@ -33,8 +33,21 @@ npm run build      # 프로덕션 빌드
 | `NEXT_PUBLIC_KAKAO_JS_KEY` | 카카오 지도 JS SDK (localhost:3000 도메인 등록 필요) |
 | `KAKAO_REST_API_KEY` · `KMA_SERVICE_KEY` · `KMA_BASE_URL` | 0단계 검증 스크립트(`scripts/spike/`)용. 앱은 쓰지 않는다 |
 | `NEXT_PUBLIC_API_MOCK` | `false`면 목 대신 실서버로 요청 (기본: 목) |
-| `NEXT_PUBLIC_API_BASE_URL` | 실서버 주소 (기본 `https://api.lunchtime.example/v1`) |
+| `NEXT_PUBLIC_API_BASE_URL` | 실서버 주소 (기본 `https://api.lunchtime.example/v1`, 로컬 백엔드는 `http://localhost:4000/v1`) |
+| `NEXT_PUBLIC_API_REAL` | 목을 쓰면서 백엔드가 만들어진 기능만 실서버로 보낸다. 쉼표로 묶음: `auth`(`/auth/*` · `/me` · `/me/password`), `taste`(`/me/preferences` · `/preferences/*` · `/ingredients`), `locations`(`/me/locations` · `/locations/*`). 2단계 중간 확인용 |
+| `NEXT_PUBLIC_KAKAO_REST_KEY` | 웹 카카오 로그인 인가 요청의 `client_id` (카카오 REST 키) |
+| `NEXT_PUBLIC_GOOGLE_CLIENT_ID` | 웹 구글 로그인 인가 요청의 `client_id` (Google Cloud OAuth 클라이언트, 웹) |
 | `NEXT_PUBLIC_MOCK_SCENARIO` | 목 예외 상황 (아래 참고) |
+
+**일부 기능만 실서버로 확인하기** (`NEXT_PUBLIC_API_REAL=auth,taste,locations`)
+
+- `../lunchtime-be`에서 `npm run db:up` → `npm run start:dev`(4000)를 먼저 띄운다
+- 이메일: `test@lunchtime.dev` / `lunch1234`. 새로 가입할 때 인증번호는 백엔드 서버 로그에 나온다
+- 카카오: [카카오로 계속하기] → 카카오 로그인 → `/login/kakao/callback` → 온보딩 또는 원래 화면. 카카오 개발자 콘솔(앱 → 플랫폼 키 → REST API 키)에 Redirect URI `http://localhost:3000/login/kakao/callback`을 등록하고, 백엔드 `.env`에 `KAKAO_APP_ID` · `KAKAO_CLIENT_SECRET`을 넣어야 한다
+- 구글: 같은 방식으로 `/login/google/callback`. Google Cloud 콘솔 OAuth 클라이언트(웹)에 이 주소를 승인된 리디렉션 URI로 등록하고, client ID를 `NEXT_PUBLIC_GOOGLE_CLIENT_ID`와 백엔드 `GOOGLE_CLIENT_IDS`에, secret을 `GOOGLE_CLIENT_SECRET`에 넣는다
+- Apple: 버튼은 "서비스 준비 중"으로 비활성화 (개발자 계정 · https 주소 준비 후)
+- 로그인 · 취향 · 온보딩 · 저장한 위치 · 위치 검색은 실서버, 나머지(추천 · 식당 · 찜 · 리뷰 등)는 아직 목이다
+- 목 화면이 같은 상태로 보이도록 실서버 응답을 목에도 알린다: 로그인 상태(`lunchtime.mockAuth`), 내 취향(홈 추천의 personal · popular 모드)
 
 ## 화면
 
@@ -46,6 +59,7 @@ npm run build      # 프로덕션 빌드
 | `/favorites` · `/my` | 찜한 식당 · MY |
 | `/taste` · `/onboarding?step=` | 취향 설정 · 온보딩 |
 | `/login` · `/login/email` · `/signup` · `/password-reset` | 로그인 · 이메일 계정 |
+| `/login/kakao/callback` · `/login/google/callback` | 소셜 로그인에서 돌아오는 곳 (잠깐 보였다가 이동) |
 | `/admin/login` | 어드민 로그인 (사용자 로그인과 별개) |
 | `/admin/users` · `/admin/reports` · `/admin/menus` · `/admin/sponsored` | 유저 관리 · 리뷰 신고 · 메뉴 관리 · 광고 식당 고정 |
 | `/dev` | 공용 부품 미리보기 (개발용) |

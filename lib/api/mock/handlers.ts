@@ -86,6 +86,11 @@ function setStoredAuth(value: "in" | "out"): void {
   }
 }
 
+// 일부 기능만 실서버로 보낼 때(NEXT_PUBLIC_API_REAL) 목 화면의 로그인 상태를 맞춘다
+export function setMockSignedIn(signedIn: boolean): void {
+  setStoredAuth(signedIn ? "in" : "out");
+}
+
 // ---------- 이메일 계정 (목) ----------
 // 가입한 계정은 새로 고쳐도 남도록 기기에 둔다. 인증번호는 항상 MOCK_EMAIL_CODE
 interface MockAccount {

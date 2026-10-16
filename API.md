@@ -10,7 +10,7 @@ REST + JSON API다. [기능명세서](https://claude.ai/code/artifact/98ec7729-5
 | --- | --- |
 | 기본 URL | `https://api.lunchtime.example/v1` (어드민은 `/v1/admin`) |
 | 인증 | `Authorization: Bearer <accessToken>`. 표시 없는 API는 로그인 필수, "공개"는 비로그인 허용 |
-| 토큰 | accessToken 1시간, refreshToken 30일. 만료 시 `POST /auth/refresh` |
+| 토큰 | accessToken 1시간, refreshToken 30일. 만료 시 `POST /auth/refresh` `{ refreshToken }` → `{ accessToken, refreshToken }`. 재발급할 때마다 refreshToken도 새로 바뀌고(회전) 옛 것은 못 쓴다. 이미 쓴 refreshToken이 다시 오면 탈취로 보고 그 사용자의 refreshToken을 모두 폐기한다 |
 | 권한 | 사용자 토큰과 어드민 토큰은 따로 발급한다. `/admin/*`은 어드민 토큰만 받고, 사용자 토큰으로 부르면 401 (어드민 인증 참고) |
 | 형식 | 요청·응답 모두 JSON, 필드명은 camelCase, 시각은 ISO 8601 (KST, +09:00) |
 | 좌표 | `lat`, `lng` (WGS84 소수점). 거리는 미터(`distanceM`) |
@@ -56,8 +56,10 @@ REST + JSON API다. [기능명세서](https://claude.ai/code/artifact/98ec7729-5
 `POST /auth/login` — 신규 사용자면 자동 가입되고 `isNewUser: true`를 돌려준다. 앱은 `onboardingCompleted`가 false이면 온보딩으로 보낸다.
 
 ```json
-// 요청
+// 요청 — 앱(웹뷰): 각 회사 SDK에서 받은 토큰
 { "provider": "kakao", "providerToken": "<카카오 access token>" }
+// 요청 — 웹 카카오: 리다이렉트로 받은 인가 코드 (redirectUri는 인가 요청 때와 같은 값)
+{ "provider": "kakao", "code": "<인가 코드>", "redirectUri": "https://…/login/kakao/callback" }
 
 // 응답 200
 {
@@ -68,6 +70,16 @@ REST + JSON API다. [기능명세서](https://claude.ai/code/artifact/98ec7729-5
 ```
 
 `provider`는 `kakao` · `apple` · `google` · `email` 중 하나다. 로그인 · 가입 API의 401은 비밀번호 틀림 등이므로 앱은 토큰 재발급(`/auth/refresh`)을 시도하지 않는다.
+
+| 소셜 | 규칙 |
+| --- | --- |
+| 요청 | `providerToken` 또는 `code` + `redirectUri` 중 하나 (둘 다 없으면 400). 토큰은 카카오 access token, 구글 · Apple id token. 인가 코드는 세 회사 모두 받는다. 그 회사의 서버 설정(키)이 없으면 400 "OO 로그인 설정이 필요해요." |
+| 카카오 웹 흐름 | 앱이 `kauth.kakao.com/oauth/authorize?client_id=<REST 키>&redirect_uri=…&response_type=code&state=…`로 보냄 → 콜백에서 `state`를 확인하고 `code`를 서버로 → 서버가 토큰으로 바꿔 사용자 정보를 받는다 |
+| 카카오 검증 | 토큰의 앱 ID가 우리 앱이 아니면 401. 회원번호를 계정 키로 쓰고, 닉네임을 이름으로(없으면 임시 이름), 카카오가 확인한 이메일만 저장 |
+| 카카오 오류 | 코드 · 토큰이 무효면 401 `INVALID_CREDENTIALS`, 카카오가 응답하지 않으면 502 `UPSTREAM_UNAVAILABLE` |
+| 탈퇴 | 카카오 계정이면 카카오 연결도 끊는다(unlink, 실패해도 탈퇴는 진행) |
+| 구글 | 웹: `accounts.google.com/o/oauth2/v2/auth`(scope `openid email profile`) → `/login/google/callback` → 서버가 코드를 ID 토큰으로 바꾼다. ID 토큰은 구글 공개키로 서명 · 발급자 · aud(우리 client ID, 웹 · 앱 여러 개) · 만료를 확인한다. 이름 · 확인된 이메일 저장 |
+| Apple | ID 토큰을 애플 공개키로 확인(aud = Service ID 또는 Bundle ID). 이름은 ID 토큰에 없어서 첫 로그인 때 앱이 `name`을 같이 보낸다(가입할 때만 사용). 코드로 로그인하면 애플 refresh token을 저장해 두었다가 탈퇴할 때 폐기한다(App Store Guideline 5.1.1(v)) → 앱도 id token만이 아니라 인가 코드를 보내는 것을 권장. 웹 로그인은 https 주소가 필요해 아직 열지 않았다(버튼 "서비스 준비 중") |
 
 **이메일 계정**
 
@@ -101,9 +113,20 @@ REST + JSON API다. [기능명세서](https://claude.ai/code/artifact/98ec7729-5
 | 가입 | `purpose: signup`인데 이미 가입된 이메일이면 409 `EMAIL_TAKEN` |
 | 로그인 | 틀리면 401 `INVALID_CREDENTIALS`(이메일 · 비밀번호 중 무엇이 틀렸는지 알려 주지 않음). 5번 연속 실패하면 429 `RATE_LIMITED` |
 | 비밀번호 재설정 | 가입하지 않은 이메일이어도 `code` 요청은 같은 응답 (계정 존재 여부를 숨김) |
-| 비밀번호 바꾸기 | `POST /me/password`: 현재 비밀번호가 틀리면 401 `INVALID_CREDENTIALS`, 새 비밀번호가 규칙에 안 맞거나 지금과 같으면 400 `VALIDATION_FAILED`, 소셜 계정이면 400 |
+| 비밀번호 바꾸기 | `POST /me/password`: 현재 비밀번호가 틀리면 401 `INVALID_CREDENTIALS`, 새 비밀번호가 규칙에 안 맞거나 지금과 같으면 400 `VALIDATION_FAILED`(`fields.newPassword`), 소셜 계정이면 400. 로그인 상태는 그대로 둔다 |
+| 재설정 후 | `password-reset`이 끝나면 그 계정의 모든 기기 로그인(refreshToken)을 끊는다 |
+| 로그아웃 | `POST /auth/logout` `{ refreshToken }`은 공개다(accessToken이 만료돼도 로그아웃할 수 있게). 그 refreshToken만 폐기 |
+| 탈퇴 | `DELETE /me`: 이메일 · 비밀번호를 지우고 이름은 "탈퇴한 사용자"로 바꾼다. 찜 · 저장한 위치 · 취향은 지우고, 리뷰는 남긴다. 같은 이메일 · 소셜 계정으로 다시 가입하면 새 계정이 된다 |
 
-인증 메일 발송 서비스는 미결정이다.
+인증 메일 발송 서비스는 미결정이다. 개발 서버는 메일 대신 인증번호를 서버 로그에 남긴다.
+
+**개발 환경 전용** (`NODE_ENV=development`일 때만, 운영에서는 꺼짐)
+
+| 항목 | 동작 |
+| --- | --- |
+| 소셜 로그인 | `providerToken`에 `dev:<아이디>` 또는 `dev:<아이디>:<이름>`을 보내면 검증 없이 그 계정으로 로그인 · 가입 (`SOCIAL_DEV_LOGIN=true`). 실제 검증은 카카오(2단계-1b), 구글 · 애플(2단계-1c) |
+| 어드민 OTP | 인증 앱 6자리 외에 `ADMIN_OTP_DEV_CODE`(기본 `123456`)도 받는다 |
+| 인증 메일 | 보내지 않고 서버 로그에 `[가입 인증번호] 이메일 → 123456` 형식으로 남긴다 |
 
 `PUT /me/preferences` — 온보딩을 끝내거나 "나중에 할게요"를 누르면 `onboardingCompleted`를 true로 바꾼다. 건너뛴 항목은 빈 배열로 보낸다.
 
@@ -117,7 +140,7 @@ REST + JSON API다. [기능명세서](https://claude.ai/code/artifact/98ec7729-5
 }
 ```
 
-`spiceLevel`은 맵기를 건너뛰면 `null`이다.
+`spiceLevel`은 맵기를 건너뛰면 `null`이다. 응답은 저장한 `Preferences`(공백 · 중복을 정리한 값)다. `allergies` · `favoriteCuisines`는 선택지에 있는 값만 받고, 아니면 400 `VALIDATION_FAILED`(`fields`). `completeOnboarding` 없이 저장하면 온보딩 상태는 바뀌지 않는다. 취향을 한 번도 저장하지 않았으면 `GET /me/preferences`는 빈 값(`spiceLevel: null`)을 준다.
 
 `GET /me` 응답의 요약 숫자: `stats: { reviewCount, favoriteCount, recommendationCount }` (MY 화면 상단).
 
@@ -127,10 +150,14 @@ REST + JSON API다. [기능명세서](https://claude.ai/code/artifact/98ec7729-5
 | `GET /ingredients?q=` | `{ items: string[] }` — 재료 사전 검색 |
 | `GET /me/locations` | `{ items: SavedLocation[] }` |
 | `GET /locations/search?q=` | `{ items: [{ name, address, lat, lng }] }` |
+| `POST /me/locations` | `SavedLocation`에서 `id`를 뺀 값 → 201 `SavedLocation`. 한 사람당 10개까지, 넘으면 409 `CONFLICT` |
+| `DELETE /me/locations/{id}` | 204. 없거나 남의 위치면 404 |
+| `GET /locations/search?q=` 순서 | 주소(동네 · 도로명) 결과를 먼저, 이어서 장소(건물 · 역 등) 결과, 합쳐서 최대 10개. `name`은 동네면 법정동 이름(예: 역삼동), 장소면 장소 이름. 서버가 10분 캐시 |
+| `GET /locations/reverse?lat=&lng=` | `{ name, lat, lng }`. `name`은 법정동(예: 역삼동). 국내 밖 좌표는 422 `OUT_OF_SERVICE_AREA`. 서버가 약 100m 단위로 하루 캐시 |
 
 알레르기 → 메뉴 재료 대응(예: `갑각류 (새우·게)` → 새우 · 게 · 꽃게)은 서버의 재료 사전이 가진다. 취향 제외 필터와 미리보기가 이 대응을 쓴다.
 
-`POST /preferences/preview` (공개) — 취향 설정 화면의 "추천 미리보기". 저장 전 설정으로 추천이 어떻게 바뀌는지 돌려준다. 고를 때마다 부르므로(앱은 200ms 디바운스) 가볍게 계산한다.
+`POST /preferences/preview` (공개) — 취향 설정 화면의 "추천 미리보기". 노출 중인 메뉴만 보고, 매칭 %는 취향(종류 · 맵기)과 최근 7일 추천 수 순위로 매긴다(추천과 같은 계산). 저장 전 설정으로 추천이 어떻게 바뀌는지 돌려준다. 고를 때마다 부르므로(앱은 200ms 디바운스) 가볍게 계산한다.
 
 ```json
 // 요청: Preferences
@@ -299,7 +326,9 @@ REST + JSON API다. [기능명세서](https://claude.ai/code/artifact/98ec7729-5
 
 | 규칙 | 내용 |
 | --- | --- |
-| 토큰 | 사용자 토큰과 다른 발급자 · 대상(예: JWT `aud: "admin"`), accessToken은 짧게(예: 30분). 웹 전용이므로 httpOnly 쿠키 권장 |
+| 토큰 | 사용자 토큰과 비밀값 · 대상(JWT `aud: "admin"`)이 다르다. accessToken 30분, refreshToken 12시간(회전 방식은 사용자와 같다). 지금은 응답 본문으로 주고, httpOnly 쿠키 전환은 배포 때 검토 |
+| 로그아웃 | `POST /admin/auth/logout` `{ refreshToken? }`: refreshToken을 주면 그것만, 없으면 그 운영자의 모든 refreshToken을 폐기 |
+| 잠금 | 5번 연속 실패하면 15분 동안 429 `RATE_LIMITED` (사용자 이메일 로그인도 같다) |
 | 실패 | 틀리면 401 `INVALID_CREDENTIALS`(아이디 · 비밀번호 · OTP 중 무엇이 틀렸는지 알려 주지 않음). 5번 연속 실패하면 429 `RATE_LIMITED` |
 | 기록 | 로그인 성공 · 실패도 감사 로그에 남긴다 |
 
