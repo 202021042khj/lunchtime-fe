@@ -20,5 +20,5 @@ export function searchLocations(q: string): Promise<{ items: LocationSearchResul
 }
 
 export function reverseGeocode(coord: LatLng): Promise<Neighborhood> {
-  return request<Neighborhood>("GET", "/locations/reverse", { query: coord });
+  return request<Neighborhood>("GET", "/locations/reverse", { query: { lat: coord.lat, lng: coord.lng } });
 }

@@ -24,6 +24,8 @@ interface ReviewPlace {
   placeId: string;
   name: string;
   imageUrl: string | null;
+  // 음식 종류: 사진이 없을 때 종류별 대체 이미지 (MY에서는 모름)
+  cuisine?: string;
   meta: string | null;
 }
 
@@ -66,6 +68,7 @@ export function openWriteReview(restaurant: Restaurant, onCreated: (result: Crea
       placeId: restaurant.placeId,
       name: restaurant.name,
       imageUrl: restaurant.imageUrl,
+      cuisine: restaurant.category,
       meta: joinMeta([restaurant.category, restaurant.mainMenu, neighborhoodOf(restaurant.address)]),
     },
     null,
@@ -237,7 +240,7 @@ export default function WriteReviewModal({ isOpen, place, editing = null, onClos
 
             <div className="min-h-0 flex-1 overflow-y-auto px-5 pb-6 md:px-8 md:pt-6">
               <div className="flex items-center gap-3 rounded-[18px] bg-brand-primary-tint p-3">
-                <FoodImage src={place.imageUrl} alt={place.name} compact className="size-12 shrink-0 rounded-xl" />
+                <FoodImage src={place.imageUrl} alt={place.name} compact cuisine={place.cuisine} className="size-12 shrink-0 rounded-xl" />
                 <div className="flex min-w-0 flex-col gap-0.5">
                   <p className="truncate text-headline text-labels-primary">{place.name}</p>
                   {place.meta && <p className="truncate text-footnote text-labels-secondary">{place.meta}</p>}

@@ -47,7 +47,7 @@ export default function RestaurantDetailContent({
         </button>
       </div>
 
-      <FoodImage src={r.imageUrl} alt={r.name} className="h-[170px] w-full shrink-0 rounded-[20px]" />
+      <FoodImage src={r.imageUrl} alt={r.name} cuisine={r.category} className="h-[170px] w-full shrink-0 rounded-[20px]" />
 
       <div className="flex flex-col gap-1">
         <h2 className="text-title-2 font-bold text-labels-primary">{r.name}</h2>

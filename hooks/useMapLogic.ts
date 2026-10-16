@@ -156,7 +156,7 @@ export function useMapLogic(): UseMapLogicResult {
   useEffect(() => {
     if (!selectedId) return;
     let cancelled = false;
-    getRestaurant(selectedId)
+    getRestaurant(selectedId, searchCenter)
       .then((detail) => {
         if (!cancelled) setDetailResult({ placeId: selectedId, detail });
       })
@@ -166,6 +166,8 @@ export function useMapLogic(): UseMapLogicResult {
     return () => {
       cancelled = true;
     };
+    // 거리는 고른 순간의 검색 기준점이면 된다. 지도를 옮길 때마다 상세를 다시 부르지 않는다
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedId, reviewsVersion]);
 
   const settled = result.key === requestKey;

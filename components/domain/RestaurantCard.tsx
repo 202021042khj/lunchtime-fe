@@ -17,7 +17,7 @@ export default function RestaurantCard({ restaurant, onSelect, onToggleFavorite,
   const meta = joinMeta([r.category, r.mainMenu, formatDistance(r.distanceM)]);
   const body = (
     <>
-      <FoodImage src={r.imageUrl} alt="" className="h-[190px] w-full rounded-[18px]" />
+      <FoodImage src={r.imageUrl} alt="" cuisine={r.category} className="h-[190px] w-full rounded-[18px]" />
       <span className="flex flex-col gap-1 px-2">
         {/* 오른쪽 하트 자리를 비워 둔다 */}
         <span className="truncate pr-9 text-headline text-labels-primary">{r.name}</span>

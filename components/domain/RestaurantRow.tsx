@@ -22,7 +22,7 @@ export default function RestaurantRow({ restaurant, onSelect, onToggleFavorite, 
 
   const content = (
     <>
-      <FoodImage src={r.imageUrl} alt="" compact className="size-[60px] shrink-0 rounded-[14px]" />
+      <FoodImage src={r.imageUrl} alt="" compact cuisine={r.category} className="size-[60px] shrink-0 rounded-[14px]" />
       <span className="flex min-w-0 flex-1 flex-col gap-0.5">
         <span className="flex min-w-0 items-center gap-1.5">
           <span className="truncate text-headline text-labels-primary">{r.name}</span>

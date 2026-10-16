@@ -11,6 +11,8 @@ const REAL_GROUPS: Record<string, (path: string) => boolean> = {
   auth: (p) => p.startsWith("/auth/") || p === "/me" || p === "/me/password",
   taste: (p) => p === "/me/preferences" || p.startsWith("/preferences/") || p === "/ingredients",
   locations: (p) => p === "/me/locations" || p.startsWith("/me/locations/") || p.startsWith("/locations/"),
+  restaurants: (p) => p === "/restaurants" || p.startsWith("/restaurants/") || p === "/me/favorites" || p.startsWith("/me/favorites/"),
+  weather: (p) => p === "/weather",
 };
 const REAL = USE_MOCK
   ? (process.env.NEXT_PUBLIC_API_REAL ?? "")

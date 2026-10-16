@@ -265,6 +265,18 @@ REST + JSON API다. [기능명세서](https://claude.ai/code/artifact/98ec7729-5
 | `keyword` | 카카오 키워드 검색에만 나옴. 카카오가 메뉴판 등으로 찾은 것으로 보이나 이유는 알 수 없음 (추정) | 카카오 검색에서 '순두부찌개'로 나온 식당 |
 | `category` | 카카오 카테고리만 일치 (추정) | 카테고리(찌개·전골)로 찾은 식당 |
 
+| 식당 API 세부 | 규칙 |
+| --- | --- |
+| 카카오 검색 | 음식점(FD6)만, 반경 안에서 거리순. `menuId`면 메뉴의 `kakaoKeyword`로 키워드 검색 + 음식점 카테고리 검색(카테고리만 맞는 곳), `q`면 그 검색어, 둘 다 없으면 근처 음식점 전체 |
+| `category` | 카카오 카테고리 2단계를 음식 종류 이름으로 바꾼 값(`아시아음식` → `아시안`). 찜 목록 `cuisine` 필터도 이 값으로 거른다 |
+| `mainMenu` · `imageUrl` | 카카오 로컬 API에는 사진 · 대표 메뉴가 없다. `imageUrl`은 우리 사진만 쓴다: 가장 최근 리뷰 사진 → 광고 · 입점 식당이 등록한 사진 (2단계-4 · 2단계-5에서 채움). 없으면 null이고, 앱은 음식 종류(`category`)별 대체 이미지를 보여 준다. 크롤링 · 이미지 검색 · Google 사진은 약관 · 저작권 문제로 쓰지 않는다 |
+| `GET /restaurants/{placeId}` | 선택 쿼리 `lat` · `lng`를 주면 거리(`distanceM` · `walkMinutes`)를 채우고, 없으면 0. 카카오에는 ID로 한 곳을 조회하는 API가 없어서, 서버가 검색 결과로 돌려준 식당(7일)이나 찜 · 광고에 저장한 정보로 찾는다. 못 찾으면 404 |
+| `PUT /me/favorites/{placeId}` | 위와 같은 이유로 검색 · 상세에서 본 식당만 찜할 수 있다(아니면 404 "목록에서 다시 찜해 주세요"). 성공은 204 |
+| `POST /restaurants/{placeId}/menu-reports` | 204. 같은 사용자 · 식당 · 메뉴를 다시 제보하면 409 `ALREADY_REPORTED_MENU` |
+| `POST /restaurants/{placeId}/click` | 공개, 204. 진행 중인 광고의 클릭 수만 올린다. 노출 수는 목록 응답에 광고가 실릴 때마다 올린다 |
+| 좌표 · 장애 | 좌표가 없으면 400 `LOCATION_REQUIRED`, 없는 메뉴면 404, 카카오 장애면 502 `UPSTREAM_UNAVAILABLE` |
+| `GET /weather` | `Weather` `{ tempC, condition(clear · cloudy · overcast · rain · sleet · snow), label, highC, lowC }`. 최고 · 최저를 못 받으면 둘 다 null(현재 날씨는 그대로). 기상청 장애면 502 |
+
 영업시간·브레이크·휴무일은 카카오 로컬 API에 없다. 광고·입점 식당만 어드민 광고 등록 때 입력받아 `hours`와 `openNow`를 채우고, 나머지 식당은 둘 다 null이다. 앱은 null이면 영업 정보를 표시하지 않고(상세에서는 "영업시간 정보 없음"), "영업 중" 필터는 제공하지 않는다.
 
 ## 리뷰 · 신고

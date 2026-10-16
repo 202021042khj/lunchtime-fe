@@ -8,7 +8,7 @@ export function getRecommendations(query: RecommendationQuery): Promise<Recommen
 }
 
 export function getWeather(coord: LatLng): Promise<Weather> {
-  return request<Weather>("GET", "/weather", { query: coord });
+  return request<Weather>("GET", "/weather", { query: { lat: coord.lat, lng: coord.lng } });
 }
 
 // 메뉴바 통합 검색

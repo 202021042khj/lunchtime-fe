@@ -1,5 +1,5 @@
 import { request } from "@/lib/api/client";
-import { CursorPage } from "@/types/common";
+import { CursorPage, LatLng } from "@/types/common";
 import {
   FavoritesQuery,
   Restaurant,
@@ -12,8 +12,11 @@ export function getRestaurants(query: RestaurantQuery): Promise<RestaurantListRe
   return request<RestaurantListResponse>("GET", "/restaurants", { query });
 }
 
-export function getRestaurant(placeId: string): Promise<RestaurantDetail> {
-  return request<RestaurantDetail>("GET", `/restaurants/${placeId}`);
+// origin을 주면 서버가 거리(distanceM · walkMinutes)를 채운다.
+// 좌표만 보낸다 (현재 위치 객체의 이름 · 라벨 등이 섞이면 서버가 모르는 값으로 400)
+export function getRestaurant(placeId: string, origin?: LatLng | null): Promise<RestaurantDetail> {
+  const query = origin ? { lat: origin.lat, lng: origin.lng } : undefined;
+  return request<RestaurantDetail>("GET", `/restaurants/${placeId}`, { query });
 }
 
 export function getFavorites(query: FavoritesQuery = {}): Promise<CursorPage<Restaurant>> {
