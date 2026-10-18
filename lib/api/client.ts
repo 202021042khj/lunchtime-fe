@@ -13,6 +13,11 @@ const REAL_GROUPS: Record<string, (path: string) => boolean> = {
   locations: (p) => p === "/me/locations" || p.startsWith("/me/locations/") || p.startsWith("/locations/"),
   restaurants: (p) => p === "/restaurants" || p.startsWith("/restaurants/") || p === "/me/favorites" || p.startsWith("/me/favorites/"),
   weather: (p) => p === "/weather",
+  // 어드민 로그인 · 메뉴 관리 · 광고 · 사진 (유저 관리 · 리뷰 신고는 2단계-5까지 목)
+  admin: (p) =>
+    p.startsWith("/admin/auth/") ||
+    p === "/admin/me" ||
+    ["/admin/menus", "/admin/ingredients", "/admin/sponsored", "/admin/places", "/admin/uploads"].some((x) => p === x || p.startsWith(`${x}/`)),
 };
 const REAL = USE_MOCK
   ? (process.env.NEXT_PUBLIC_API_REAL ?? "")
@@ -20,6 +25,9 @@ const REAL = USE_MOCK
       .map((g) => REAL_GROUPS[g.trim()])
       .filter(Boolean)
   : [];
+
+// 어드민 로그인을 실서버로 하면 아직 목인 어드민 화면도 그 토큰을 받아야 한다
+export const realAdminAuth = () => REAL.includes(REAL_GROUPS.admin);
 
 // 이 경로를 목으로 처리하는지
 export const usesMock = (path: string) => USE_MOCK && !REAL.some((isReal) => isReal(path));

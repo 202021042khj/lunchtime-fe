@@ -269,7 +269,7 @@ REST + JSON API다. [기능명세서](https://claude.ai/code/artifact/98ec7729-5
 | --- | --- |
 | 카카오 검색 | 음식점(FD6)만, 반경 안에서 거리순. `menuId`면 메뉴의 `kakaoKeyword`로 키워드 검색 + 음식점 카테고리 검색(카테고리만 맞는 곳), `q`면 그 검색어, 둘 다 없으면 근처 음식점 전체 |
 | `category` | 카카오 카테고리 2단계를 음식 종류 이름으로 바꾼 값(`아시아음식` → `아시안`). 찜 목록 `cuisine` 필터도 이 값으로 거른다 |
-| `mainMenu` · `imageUrl` | 카카오 로컬 API에는 사진 · 대표 메뉴가 없다. `imageUrl`은 우리 사진만 쓴다: 가장 최근 리뷰 사진 → 광고 · 입점 식당이 등록한 사진 (2단계-4 · 2단계-5에서 채움). 없으면 null이고, 앱은 음식 종류(`category`)별 대체 이미지를 보여 준다. 크롤링 · 이미지 검색 · Google 사진은 약관 · 저작권 문제로 쓰지 않는다 |
+| `mainMenu` · `imageUrl` | 카카오 로컬 API에는 사진 · 대표 메뉴가 없다. `imageUrl`은 우리 사진만 쓴다: 가장 최근 리뷰 사진(2단계-4) → 진행 중인 광고 · 입점 식당의 사진 → 메뉴로 검색했으면 그 메뉴 사진. 없으면 null이고, 앱은 음식 종류(`category`)별 대체 이미지를 보여 준다. 크롤링 · 이미지 검색 · Google 사진은 약관 · 저작권 문제로 쓰지 않는다 |
 | `GET /restaurants/{placeId}` | 선택 쿼리 `lat` · `lng`를 주면 거리(`distanceM` · `walkMinutes`)를 채우고, 없으면 0. 카카오에는 ID로 한 곳을 조회하는 API가 없어서, 서버가 검색 결과로 돌려준 식당(7일)이나 찜 · 광고에 저장한 정보로 찾는다. 못 찾으면 404 |
 | `PUT /me/favorites/{placeId}` | 위와 같은 이유로 검색 · 상세에서 본 식당만 찜할 수 있다(아니면 404 "목록에서 다시 찜해 주세요"). 성공은 204 |
 | `POST /restaurants/{placeId}/menu-reports` | 204. 같은 사용자 · 식당 · 메뉴를 다시 제보하면 409 `ALREADY_REPORTED_MENU` |
@@ -410,6 +410,8 @@ REST + JSON API다. [기능명세서](https://claude.ai/code/artifact/98ec7729-5
 | 수정 | `PATCH`는 식당(`place`)을 바꿀 수 없다. 종료된 광고는 409 `CONFLICT` → 재등록을 쓴다 |
 | 재등록 | `POST /admin/sponsored/{id}/renew` body는 `place`를 뺀 `POST /admin/sponsored`와 같다(식당은 원래 광고에서 복사). 종료된 광고만 가능, 새 광고를 만들어 돌려준다 |
 | 취소 | `DELETE /admin/sponsored/{id}`는 지우지 않고 `canceled: true`로 바로 종료한다(기록 유지). 이미 종료면 409 `CONFLICT` |
+| 식당 사진 | `imageUrl`(선택): 아래 "사진 올리기"로 받은 주소. 재등록할 때 보내지 않으면 사진 없음(앱은 원래 광고의 사진을 다시 보낸다) |
+| 보내는 칸 | `PATCH` · `renew`에는 `place`를 넣지 않는다(넣으면 400). 응답에만 있는 `id` · `status` 등도 보내지 않는다 |
 
 ### 메뉴 관리
 
@@ -433,6 +435,14 @@ CSV 양식 (UTF-8, BOM 있어도 됨, 첫 줄은 머리글, 목록은 `|`로 구
 ```
 
 날씨는 한글(맑음 · 더움 · 쌀쌀함 · 비 · 눈)이나 값 둘 다 받고, 노출은 Y/N. 응답 `{ "created": 1, "updated": 1, "failed": [{ "line": 4, "reason": "카카오 검색 키워드를 적어 주세요." }] }` — 문제 있는 줄만 건너뛰고 나머지는 반영한다.
+
+### 사진 올리기
+
+| 메서드 | 경로 | 설명 |
+| --- | --- | --- |
+| POST | `/admin/uploads/images` | multipart: `file`, `purpose`(`menu` · `sponsored`) → 201 `{ imageUrl }` |
+
+어드민 사진은 브라우저 → 서버 → 저장소(S3 호환)로 올린다. 서버가 파일 첫 바이트로 JPG · PNG · WEBP인지 확인하고(이름 · Content-Type은 믿지 않음) 5MB를 넘으면 400 `VALIDATION_FAILED`(`fields.file`). 받은 주소를 메뉴(`PATCH /admin/menus/{id}` · `POST /admin/menus`)나 광고의 `imageUrl`로 저장해야 반영된다. 저장할 때 서버는 우리 저장소에 실제로 있는 사진 주소인지 다시 확인한다(다른 사이트 주소 · 지어낸 주소는 400). 사진은 공개 주소로 바로 보여 준다(개발: `http://localhost:9000/lunchtime/...`, 운영: CDN).
 
 ### 리뷰 신고
 
@@ -484,7 +494,7 @@ CSV 양식 (UTF-8, BOM 있어도 됨, 첫 줄은 머리글, 목록은 `|`로 구
 | Preferences | `dislikedIngredients[]`, `allergies[]`, `spiceLevel(0~4)`, `favoriteCuisines[]` |
 | User (내 정보) | `id`, `name`, `provider(kakao\|apple\|google\|email)`, `role`, `onboardingCompleted`, `createdAt`, `stats { reviewCount, favoriteCount, recommendationCount }` |
 | SavedLocation | `id`, `label`(회사 등), `name`(동네), `address`(위치 설정에 표시), `lat`, `lng` |
-| Sponsored (어드민) | `id`, `place`, `targetMenuIds[]`, `targetMenuNames[]`, `targetCategories[]`, `radiusM`, `startDate`, `endDate`, hours, `priority`, `feeKrw`, `paymentStatus(pending\|paid)`, `status(scheduled\|active\|ended)`, `canceled`, `impressions`, `clicks` |
+| Sponsored (어드민) | `id`, `place`, `targetMenuIds[]`, `targetMenuNames[]`, `targetCategories[]`, `radiusM`, `startDate`, `endDate`, hours, `priority`, `feeKrw`, `paymentStatus(pending\|paid)`, `status(scheduled\|active\|ended)`, `canceled`, `impressions`, `clicks`, `imageUrl`(식당 사진, 없으면 null) |
 | ReportGroup (어드민) | `review`, `status(pending\|resolved)`, `resolution(dismissed\|deleted\|null)`, `reasonCounts { abuse, ad, false_info, irrelevant }`, `reportCount`, `firstReportedAt`, `lastReportedAt`, `memos[]`, `authorHistory { reviewCount, reportCount, deletedCount }` |
 | AdminUser (어드민) | `id`, `name`, `maskedEmail`, `provider`, `createdAt`, `lastActiveAt`, `reviewCount`, `favoriteCount`, `reportCount`, `status(active\|suspended\|withdrawn)`, `suspendedUntil` |
 

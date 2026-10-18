@@ -191,6 +191,17 @@ export function createAdminCatalogRoutes(): Record<string, AdminHandler> {
       return { items: [...new Set(all)].sort((a, b) => a.localeCompare(b, "ko")) };
     },
 
+    // ---------- 사진 ----------
+    // 실서버는 저장소(S3 호환)에 올리고 공개 주소를 준다. 목은 이 브라우저에서만 보이는 임시 주소
+    "POST /admin/uploads/images": ({ body }) => {
+      requireAdmin();
+      const file = body instanceof FormData ? body.get("file") : null;
+      if (!(file instanceof Blob)) fail(400, "VALIDATION_FAILED", "사진 파일을 골라 주세요.");
+      if (!["image/jpeg", "image/png", "image/webp"].includes(file.type)) fail(400, "VALIDATION_FAILED", "JPG · PNG · WEBP 사진만 올릴 수 있어요.");
+      if (file.size > 5 * 1024 * 1024) fail(400, "VALIDATION_FAILED", "사진은 5MB까지 올릴 수 있어요.");
+      return { imageUrl: URL.createObjectURL(file) };
+    },
+
     // ---------- 광고 식당 고정 ----------
     "GET /admin/sponsored/summary": () => {
       requireAdmin();

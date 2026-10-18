@@ -32,6 +32,7 @@ export interface Sponsored {
   status: SponsoredStatus; // 서버가 기간으로 계산
   canceled: boolean; // 기간 중에 취소해 종료된 광고
   targetMenuNames: string[]; // 표 표시용 (targetMenuIds의 이름)
+  imageUrl: string | null; // 식당 사진 (어드민이 올림). 사진 없는 식당 목록에서 이 사진을 쓴다
   impressions: number;
   clicks: number;
 }
@@ -184,5 +185,8 @@ export interface AdminSponsoredSummary {
 // POST /admin/sponsored · PATCH /admin/sponsored/{id} · POST /admin/sponsored/{id}/renew
 export type SponsoredInput = Pick<
   Sponsored,
-  "place" | "targetMenuIds" | "targetCategories" | "radiusM" | "startDate" | "endDate" | "hours" | "priority" | "feeKrw" | "paymentStatus"
+  "place" | "targetMenuIds" | "targetCategories" | "radiusM" | "startDate" | "endDate" | "hours" | "priority" | "feeKrw" | "paymentStatus" | "imageUrl"
 >;
+
+// POST /admin/uploads/images (multipart: file, purpose) → 메뉴 · 광고 저장 때 imageUrl로 보낸다
+export type AdminImagePurpose = "menu" | "sponsored";

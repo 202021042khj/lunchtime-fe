@@ -5,6 +5,7 @@ import { overlay } from "overlay-kit";
 import { KeyboardEvent, useEffect, useState } from "react";
 import SelectChip from "@/components/common/SelectChip";
 import AdminDrawer, { AdminTag, DRAWER_INPUT, DrawerField } from "@/components/domain/admin/AdminDrawer";
+import ImageUploadField from "@/components/domain/admin/ImageUploadField";
 import Button from "@/components/ui/button";
 import { notify } from "@/components/ui/notify/notify-utils";
 import { MENU_CUISINES, MENU_TASTES, MENU_WEATHERS } from "@/constants/admin";
@@ -43,11 +44,27 @@ export function openMenuEditor(menu: AdminMenu | null): Promise<AdminMenu | null
   ));
 }
 
+// 저장할 때 보낼 칸만 (목록 행의 id · recommendCount7d가 섞이면 서버가 모르는 필드로 거절)
+const toInput = ({ name, cuisine, category, imageUrl, ingredients, tastes, spiceLevel, weathers, kakaoKeyword, kakaoCategory, visible }: MenuInput): MenuInput => ({
+  name,
+  cuisine,
+  category,
+  imageUrl,
+  ingredients,
+  tastes,
+  spiceLevel,
+  weathers,
+  kakaoKeyword,
+  kakaoCategory,
+  visible,
+});
+
 const toggle = <T,>(list: T[], v: T) => (list.includes(v) ? list.filter((x) => x !== v) : [...list, v]);
 
 // 메뉴 편집 (Figma 시안 없음 — A2 광고 등록 패널 스타일). 재료는 취향 사전과 같은 이름이어야 제외 필터에 걸린다
 export default function MenuEditorDrawer({ isOpen, menu, onDone }: { isOpen: boolean; menu: AdminMenu | null; onDone: (saved: AdminMenu | null) => void }) {
-  const [form, setForm] = useState<MenuInput>(() => (menu ? { ...menu } : EMPTY));
+  const [form, setForm] = useState<MenuInput>(() => (menu ? toInput(menu) : EMPTY));
+  const [uploading, setUploading] = useState(false);
   const [ingredientDraft, setIngredientDraft] = useState("");
   const [dictionary, setDictionary] = useState<string[]>([]);
   const [error, setError] = useState<string | null>(null);
@@ -93,7 +110,7 @@ export default function MenuEditorDrawer({ isOpen, menu, onDone }: { isOpen: boo
     if (problem) return setError(problem);
     setSaving(true);
     try {
-      const saved = menu ? await updateMenu(menu.id, form) : await createMenu(form);
+      const saved = menu ? await updateMenu(menu.id, toInput(form)) : await createMenu(toInput(form));
       notify.success(menu ? `'${saved.name}' 메뉴를 고쳤어요.` : `'${saved.name}' 메뉴를 추가했어요.`);
       onDone(saved);
     } catch (err) {
@@ -113,12 +130,16 @@ export default function MenuEditorDrawer({ isOpen, menu, onDone }: { isOpen: boo
           <Button type="button" variant="outlined" color="brand" shape="round" size="sm" onClick={() => onDone(null)} className="font-semibold">
             취소
           </Button>
-          <Button type="button" color="brand" shape="round" size="sm" isLoading={saving} onClick={save} className="font-semibold">
+          <Button type="button" color="brand" shape="round" size="sm" isLoading={saving} disabled={uploading} onClick={save} className="font-semibold">
             {menu ? "저장하기" : "추가하기"}
           </Button>
         </>
       }
     >
+      <DrawerField label="메뉴 사진" hint="추천 카드 · 사진 없는 식당에 쓰여요">
+        <ImageUploadField value={form.imageUrl} onChange={(url) => set("imageUrl", url)} purpose="menu" label="메뉴 사진" onUploadingChange={setUploading} />
+      </DrawerField>
+
       <DrawerField label="메뉴 이름" htmlFor="menu-name">
         <input value={form.name} onChange={(e) => set("name", e.target.value)} placeholder="예: 얼큰 순두부찌개" id="menu-name" className={DRAWER_INPUT} />
       </DrawerField>

@@ -5,7 +5,7 @@ import AuthTextField, { PasswordField } from "@/components/domain/auth/AuthTextF
 import Button from "@/components/ui/button";
 import { ROUTES } from "@/constants/navigation";
 import { UseAdminLoginLogicResult } from "@/hooks/useAdminLoginLogic";
-import { USE_MOCK } from "@/lib/api/client";
+import { usesMock } from "@/lib/api/client";
 
 // 어드민 로그인 (Figma 시안 없음 — 09 Login 카드 스타일). 사용자 로그인과 완전히 분리된 화면 · 계정 · 토큰
 export default function AdminLoginPage(logic: UseAdminLoginLogicResult) {
@@ -37,7 +37,7 @@ export default function AdminLoginPage(logic: UseAdminLoginLogicResult) {
             value={logic.otp}
             onChange={(e) => logic.setOtp(e.target.value)}
             error={logic.error}
-            hint={USE_MOCK ? "목 서버: admin / admin1234 / OTP 123456" : undefined}
+            hint={usesMock("/admin/auth/login") ? "목 서버: admin / admin1234 / OTP 123456" : process.env.NODE_ENV === "development" ? "개발 서버: admin / admin1234 / OTP 123456" : undefined}
             trailing={<ShieldCheck aria-hidden className="size-5 text-labels-tertiary" />}
           />
           <Button type="submit" color="brand" shape="round" isLoading={logic.pending} className="h-[52px] w-full text-[17px] font-semibold">

@@ -804,3 +804,4 @@ Figma `04 Write Review`(24:480), `11 All Reviews`(36:1523), `11 Report Review`(3
 - (2026-10-16) 2단계-2: `NEXT_PUBLIC_API_REAL=auth,taste,locations`(기능 묶음별 실서버), 실서버 취향을 목에도 반영, 온보딩에서 늦게 온 기존 취향이 고른 값을 지우던 버그 수정(`useTasteForm.prefill`). 자세한 내용은 `../lunchtime-be/log.md`
 - (2026-10-16) 2단계-3a: `NEXT_PUBLIC_API_REAL`에 `restaurants` · `weather` 추가, 지도 상세에 좌표 전달. 현재 위치 객체가 통째로 쿼리에 실려 상세가 400 나던 버그 수정(좌표만 보냄). 자세한 내용은 `../lunchtime-be/log.md`
 - (2026-10-16) 식당 이미지: 카카오에 사진이 없어 `FoodImage`에 음식 종류별 대체 이미지 추가(`cuisine` 속성). 리뷰 · 광고 사진 연결은 2단계-4 · 5. 자세한 내용은 `../lunchtime-be/log.md`
+- (2026-10-19) 어드민 사진: `ImageUploadField`(메뉴 사진 · 광고 식당 사진), `NEXT_PUBLIC_API_REAL`에 `admin` 추가. 실서버 연결 중 찾은 버그 4개 수정: 메뉴 저장에 id 섞임, 광고 수정 · 재등록에 place 섞임, "음식점 >" 카테고리, UTC "오늘". 자세한 내용은 `../lunchtime-be/log.md`

@@ -1,5 +1,5 @@
 // 어드민 목 핸들러 공용: 에러 · 어드민 토큰 확인 · 페이지 나눔
-import { ApiError } from "@/lib/api/client";
+import { ApiError, realAdminAuth } from "@/lib/api/client";
 import { getAdminAccessToken } from "@/lib/api/token";
 import { ErrorCode } from "@/types/common";
 
@@ -13,8 +13,11 @@ export function fail(status: number, code: ErrorCode, message: string): never {
 }
 
 // 어드민 토큰은 사용자 토큰과 따로 확인한다 (사용자로 로그인했어도 어드민 API는 401)
+// 어드민 로그인만 실서버로 할 때(NEXT_PUBLIC_API_REAL에 admin)는 실서버가 준 토큰도 받는다 (검증은 실서버 몫)
 export function requireAdmin(): void {
-  if (getAdminAccessToken() !== ADMIN_TOKEN) fail(401, "UNAUTHORIZED", "관리자 로그인이 필요해요.");
+  const token = getAdminAccessToken();
+  const ok = realAdminAuth() ? !!token : token === ADMIN_TOKEN;
+  if (!ok) fail(401, "UNAUTHORIZED", "관리자 로그인이 필요해요.");
 }
 
 export function page<T>(items: T[], query: URLSearchParams) {

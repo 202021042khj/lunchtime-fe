@@ -52,9 +52,12 @@ const HOURS = { open: "11:00", close: "21:00", break: ["15:00", "16:30"] as [str
 // status · targetMenuNames는 서버가 계산해 붙인다
 export type MockSponsored = Omit<Sponsored, "status" | "targetMenuNames">;
 
-export const MOCK_SPONSORED: MockSponsored[] = [
+// 사진은 어드민에서 올린다 (목 시작 데이터는 사진 없음)
+export const MOCK_SPONSORED: MockSponsored[] = (
+  [
   { id: "sp_1", place: MOCK_PLACES[0], targetMenuIds: ["m_12"], targetCategories: ["찌개류"], radiusM: 1000, startDate: dateFromToday(-14), endDate: dateFromToday(16), hours: HOURS, priority: 1, feeKrw: 300000, paymentStatus: "paid", canceled: false, impressions: 4210, clicks: 312 },
   { id: "sp_2", place: MOCK_PLACES[1], targetMenuIds: ["m_3"], targetCategories: ["아시안"], radiusM: 2000, startDate: dateFromToday(-10), endDate: dateFromToday(20), hours: null, priority: 2, feeKrw: 450000, paymentStatus: "paid", canceled: false, impressions: 2880, clicks: 190 },
   { id: "sp_3", place: MOCK_PLACES[2], targetMenuIds: ["m_21"], targetCategories: ["일식"], radiusM: 1000, startDate: dateFromToday(1), endDate: dateFromToday(30), hours: { ...HOURS, break: null, closedDays: [] }, priority: 1, feeKrw: 300000, paymentStatus: "pending", canceled: false, impressions: 0, clicks: 0 },
   { id: "sp_4", place: MOCK_PLACES[3], targetMenuIds: ["m_30"], targetCategories: ["중식"], radiusM: 2000, startDate: dateFromToday(-45), endDate: dateFromToday(-15), hours: null, priority: 1, feeKrw: 300000, paymentStatus: "paid", canceled: false, impressions: 6540, clicks: 402 },
-];
+  ] satisfies Omit<MockSponsored, "imageUrl">[]
+).map((s) => ({ ...s, imageUrl: null }));

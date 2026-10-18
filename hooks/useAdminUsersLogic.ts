@@ -120,7 +120,8 @@ export function useAdminUsersLogic(): UseAdminUsersLogicResult {
       const url = URL.createObjectURL(new Blob(["﻿" + csv], { type: "text/csv;charset=utf-8" }));
       const a = document.createElement("a");
       a.href = url;
-      a.download = `lunchtime-users-${new Date().toISOString().slice(0, 10)}.csv`;
+      // 이 컴퓨터 날짜 (UTC로 하면 한국 0~9시에 어제 날짜가 된다)
+      a.download = `lunchtime-users-${new Date().toLocaleDateString("sv-SE")}.csv`;
       a.click();
       URL.revokeObjectURL(url);
     } catch {

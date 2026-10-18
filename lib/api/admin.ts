@@ -1,6 +1,7 @@
 import { request } from "@/lib/api/client";
 import { clearAdminToken, saveAdminToken } from "@/lib/api/token";
 import {
+  AdminImagePurpose,
   AdminLoginRequest,
   AdminMenu,
   AdminMenusQuery,
@@ -129,7 +130,8 @@ export function createSponsored(input: SponsoredInput): Promise<Sponsored> {
   return request<Sponsored>("POST", "/admin/sponsored", { ...admin, body: input });
 }
 
-export function updateSponsored(id: string, input: Partial<SponsoredInput>): Promise<Sponsored> {
+// 식당(place)은 바꿀 수 없어서 보내지 않는다 (서버가 모르는 필드로 거절)
+export function updateSponsored(id: string, input: Partial<Omit<SponsoredInput, "place">>): Promise<Sponsored> {
   return request<Sponsored>("PATCH", `/admin/sponsored/${id}`, { ...admin, body: input });
 }
 
@@ -141,4 +143,14 @@ export function renewSponsored(id: string, input: Omit<SponsoredInput, "place">)
 // 광고 취소 (즉시 노출 중단, 기록은 "종료 · 취소"로 남음)
 export function cancelSponsored(id: string): Promise<void> {
   return request<void>("DELETE", `/admin/sponsored/${id}`, admin);
+}
+
+// ---------- 사진 ----------
+
+// 메뉴 · 광고 식당 사진 올리기 (jpg · png · webp, 5MB). 받은 imageUrl을 메뉴 · 광고 저장 때 같이 보낸다
+export function uploadAdminImage(file: File, purpose: AdminImagePurpose): Promise<{ imageUrl: string }> {
+  const form = new FormData();
+  form.append("purpose", purpose);
+  form.append("file", file);
+  return request<{ imageUrl: string }>("POST", "/admin/uploads/images", { ...admin, form });
 }

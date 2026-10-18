@@ -6,6 +6,7 @@ import { useEffect, useState } from "react";
 import { confirm } from "@/components/common/ConfirmDialog";
 import SelectChip from "@/components/common/SelectChip";
 import AdminDrawer, { DRAWER_INPUT, DrawerField } from "@/components/domain/admin/AdminDrawer";
+import ImageUploadField from "@/components/domain/admin/ImageUploadField";
 import Button from "@/components/ui/button";
 import { notify } from "@/components/ui/notify/notify-utils";
 import { CLOSED_DAYS, MENU_CUISINES, SPONSORED_RADII } from "@/constants/admin";
@@ -34,12 +35,15 @@ export function openSponsoredEditor(mode: SponsoredEditorMode, sponsored: Sponso
 
 const DAY = 24 * 60 * 60 * 1000;
 const isoDate = (d: Date) => d.toISOString().slice(0, 10);
+// 오늘은 이 컴퓨터의 날짜 (toISOString은 UTC라 한국 0~9시에는 어제가 된다)
+const localToday = () => new Date().toLocaleDateString("sv-SE");
 const addDays = (iso: string, days: number) => isoDate(new Date(new Date(iso).getTime() + days * DAY));
 const daysBetween = (a: string, b: string) => Math.round((new Date(b).getTime() - new Date(a).getTime()) / DAY);
 
-// "한식 > 찌개,전골" → 한식, "아시아음식 > 베트남음식" → 아시안
+// "음식점 > 한식 > 찌개,전골" → 한식, "아시아음식 > 베트남음식" → 아시안 (카카오 실제 값은 "음식점 >"으로 시작)
 function cuisineOfPlace(place: SponsoredPlace | null): string | null {
-  const top = place?.category.split(">")[0].trim() ?? "";
+  const parts = place?.category.split(">").map((p) => p.trim()) ?? [];
+  const top = (parts[0] === "음식점" ? parts[1] : parts[0]) ?? "";
   if (top.startsWith("아시아")) return "아시안";
   return (MENU_CUISINES as readonly string[]).includes(top) ? top : null;
 }
@@ -61,15 +65,16 @@ interface FormState {
   priority: string;
   fee: string; // 숫자만
   paymentStatus: PaymentStatus;
+  imageUrl: string | null;
 }
 
 function initialForm(mode: SponsoredEditorMode, s: Sponsored | null): FormState {
-  const today = isoDate(new Date());
+  const today = localToday();
   if (!s) {
     return {
       place: null, targetMenuIds: [], targetCategories: [], radiusM: 1000, startDate: today, endDate: addDays(today, 29),
       hoursOn: true, open: "11:00", close: "21:00", breakOn: false, breakStart: "15:00", breakEnd: "16:30", closedDays: [],
-      priority: "1", fee: "", paymentStatus: "pending",
+      priority: "1", fee: "", paymentStatus: "pending", imageUrl: null,
     };
   }
   // 재등록: 조건은 그대로, 기간은 오늘부터 같은 길이로, 결제는 다시 대기
@@ -91,6 +96,8 @@ function initialForm(mode: SponsoredEditorMode, s: Sponsored | null): FormState 
     priority: String(s.priority),
     fee: String(s.feeKrw),
     paymentStatus: renew ? "pending" : s.paymentStatus,
+    // 재등록해도 식당 사진은 그대로 쓴다
+    imageUrl: s.imageUrl,
   };
 }
 
@@ -118,6 +125,7 @@ function toInput(f: FormState): SponsoredInput {
     priority: Number(f.priority),
     feeKrw: Number(f.fee),
     paymentStatus: f.paymentStatus,
+    imageUrl: f.imageUrl,
   };
 }
 
@@ -149,6 +157,7 @@ export default function SponsoredEditorDrawer({
   const [menuQuery, setMenuQuery] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
+  const [uploading, setUploading] = useState(false);
   const placeLocked = mode !== "new";
 
   useEffect(() => {
@@ -194,9 +203,12 @@ export default function SponsoredEditorDrawer({
     setSaving(true);
     try {
       const input = toInput(form);
+      // 수정 · 재등록은 식당을 바꿀 수 없어서 place를 보내지 않는다
+      const { place: _place, ...rest } = input;
+      void _place;
       if (mode === "new") await createSponsored(input);
-      else if (mode === "edit") await updateSponsored(sponsored!.id, input);
-      else await renewSponsored(sponsored!.id, input);
+      else if (mode === "edit") await updateSponsored(sponsored!.id, rest);
+      else await renewSponsored(sponsored!.id, rest);
       notify.success(mode === "new" ? `'${input.place.name}'을 광고로 고정했어요.` : mode === "edit" ? "광고를 수정했어요." : "광고를 재등록했어요.");
       onDone(true);
     } catch (err) {
@@ -239,7 +251,7 @@ export default function SponsoredEditorDrawer({
           <Button type="button" variant="outlined" color="brand" shape="round" size="sm" onClick={() => onDone(false)} className="font-semibold">
             취소
           </Button>
-          <Button type="button" color="brand" shape="round" size="sm" isLoading={saving} onClick={submit} className="font-semibold">
+          <Button type="button" color="brand" shape="round" size="sm" isLoading={saving} disabled={uploading} onClick={submit} className="font-semibold">
             {SUBMIT[mode]}
           </Button>
         </>
@@ -295,6 +307,10 @@ export default function SponsoredEditorDrawer({
             )}
           </div>
         )}
+      </DrawerField>
+
+      <DrawerField label="식당 사진" hint="목록 · 지도에 이 사진이 보여요 (사장님께 받은 사진)">
+        <ImageUploadField value={form.imageUrl} onChange={(url) => set("imageUrl", url)} purpose="sponsored" label="식당 사진" onUploadingChange={setUploading} />
       </DrawerField>
 
       <DrawerField label="노출 메뉴 · 카테고리" hint="이 메뉴가 추천될 때만 노출">
