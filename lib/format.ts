@@ -74,3 +74,9 @@ export function formatMonthDayTime(iso: string): string {
   const pad = (n: number) => String(n).padStart(2, "0");
   return `${pad(d.getMonth() + 1)}.${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}`;
 }
+
+// 정지 안내: 서버 문구(사유 포함) + 언제까지. until이 없으면 무기한
+export function suspendedNotice(serverMessage: string, until: string | undefined | null, action: string): string {
+  const period = until ? `${formatMonthDay(until)}까지 ${action} 수 없어요.` : `${action} 수 없어요.`;
+  return `${serverMessage} ${period}`;
+}

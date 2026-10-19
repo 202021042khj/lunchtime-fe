@@ -377,7 +377,7 @@ REST + JSON API다. [기능명세서](https://claude.ai/code/artifact/98ec7729-5
 | --- | --- | --- |
 | GET | `/admin/users/summary` | 전체 · 이번 주 신규(지난주 대비) · 오늘 활성 · 정지 수 |
 | GET | `/admin/users?q=&status=active\|suspended\|withdrawn` | 유저 목록 (이메일은 마스킹) |
-| GET | `/admin/users/{id}` | 유저 상세 + 취향 + 받은 신고 |
+| GET | `/admin/users/{id}` | 유저 상세 + 취향 + 받은 신고 (아직 화면이 없어 서버 미구현, 화면이 생길 때 만든다) |
 | POST | `/admin/users/{id}/suspend` | 이용 정지 `{ "days": 7, "reason": "..." }` (days 없으면 무기한) |
 | POST | `/admin/users/{id}/unsuspend` | 정지 해제 |
 | GET | `/admin/users/export.csv?q=&status=` | CSV 내보내기 (목록과 같은 조건, 이메일은 가린 그대로) |
@@ -396,6 +396,14 @@ REST + JSON API다. [기능명세서](https://claude.ai/code/artifact/98ec7729-5
 ```
 
 `total`은 탈퇴를 뺀 수, `newWeekChangePercent`는 지난주 신규가 0이면 null이다. `suspendedUntil`은 정지 중일 때 끝나는 시각이고 무기한이면 null이다. 정지 · 해제 API는 바뀐 `AdminUser`를 돌려준다. 정지 사유(`reason`, 필수, 200자)는 사용자에게도 보여 준다. 엑셀 호환용 BOM은 지금은 앱이 붙이고, 서버가 붙여도 된다.
+
+| 유저 관리 세부 | 규칙 |
+| --- | --- |
+| 목록 | 최근 가입 순. `q`는 이름 · 이메일 일부(대소문자 무시). `reviewCount`는 삭제되지 않은 리뷰, `reportCount`는 그 유저 리뷰가 받은 신고 수. 소셜 계정처럼 이메일이 없으면 `maskedEmail`은 빈 문자열 |
+| 오늘 활성 | 오늘(KST) 앱을 연(`GET /me`) 유저 |
+| 정지 | `days` 1~3650 또는 null(무기한), `reason` 필수 200자. 정지 중에 다시 정지하면 새 기간 · 사유로 바뀐다. 탈퇴 유저 409, 없는 유저 404. 정지된 사용자는 리뷰 등록 · 수정 · 사진 · 신고가 403 `USER_SUSPENDED`이고 `message`에 사유가 들어간다 |
+| 정지 끝 | 기간이 지나면 목록 · 집계에서 정상으로 돌아간다(조회할 때 정리) |
+| CSV | 목록과 같은 조건, 최근 가입 순 최대 1만 줄. `=` `+` `-` `@`로 시작하는 칸은 엑셀 수식으로 읽히지 않게 앞에 `'`를 붙인다 |
 
 ### 광고 식당 고정
 
@@ -477,12 +485,21 @@ CSV 양식 (UTF-8, BOM 있어도 됨, 첫 줄은 머리글, 목록은 `|`로 구
 | --- | --- | --- |
 | GET | `/admin/reports/summary` | 처리 대기 · 오늘 접수 · 이번 달 처리 · 삭제 비율 (사이드바 배지에도 사용) |
 | GET | `/admin/reports?status=pending\|resolved` | 리뷰 단위로 묶은 신고 목록 (사유별 건수) |
-| GET | `/admin/reports/{reviewId}` | 신고 상세: 리뷰 원문, 신고자 메모, 작성자 이력 |
+| GET | `/admin/reports/{reviewId}` | 신고 상세: 목록 한 줄과 같은 `ReportGroup` |
 | POST | `/admin/reports/{reviewId}/resolve` | 처리: `{ "action": "dismiss" \| "delete", "suspendAuthorDays": 7 }` |
 
 리뷰를 삭제하면 그 리뷰에 걸린 신고는 모두 처리 완료되고, 식당 별점이 다시 계산된다. `suspendAuthorDays`를 넣으면 작성자 정지까지 한 번에 처리한다(기각 · 삭제 모두 가능). 처리 API는 바뀐 `ReportGroup`을 돌려준다.
 
 `GET /admin/reports/summary` → `{ "pending": 7, "today": 3, "resolvedThisMonth": 41, "deleteRatePercent": 34 }`. `deleteRatePercent`는 이번 달 처리 중 삭제 비율이다. `GET /admin/reports`는 `status`가 없으면 전체이고, 최근 신고 시각(`lastReportedAt`) 순이다.
+
+| 리뷰 신고 세부 | 규칙 |
+| --- | --- |
+| 묶음 상태 | 처리 대기 신고가 하나라도 있으면 `pending`. 기각한 리뷰에 새 신고가 오면 다시 `pending`이 된다. `reasonCounts` · `reportCount`는 그 리뷰가 받은 모든 신고, `memos`는 최신 먼저 |
+| 작성자 이력 | `reviewCount` 남아 있는 리뷰, `reportCount` 받은 신고, `deletedCount` 신고 처리로 삭제된 리뷰 |
+| 처리 | 대기 중인 신고를 모두 처리한다. 대기 신고가 없으면 409 `CONFLICT`, 신고가 없는 리뷰 404. 삭제는 사용자 삭제와 같이 `deletedAt`을 남기고 별점 · 리뷰 수 · 메뉴 근거를 다시 센다 |
+| 작성자 정지 | `suspendAuthorDays`(1~3650)를 주면 작성자를 정지한다. 사유는 "신고된 리뷰 (가장 많은 신고 사유)". 탈퇴한 작성자는 건너뛴다 |
+| 요약 | `pending` · `today`(오늘 KST 신고가 들어온 리뷰 수)는 리뷰 단위, `resolvedThisMonth`는 이번 달(KST) 처리 횟수 |
+| 감사 로그 | `report.resolve`, `user.suspend`, `user.unsuspend` |
 
 ## 공통 데이터 객체
 

@@ -11,7 +11,7 @@ import { notify } from "@/components/ui/notify/notify-utils";
 import { REPORT_REASONS, REVIEW_LIMITS } from "@/constants/review";
 import { ApiError } from "@/lib/api/client";
 import { reportReview } from "@/lib/api/reviews";
-import { formatMonthDay } from "@/lib/format";
+import { formatMonthDay, suspendedNotice } from "@/lib/format";
 import { cn } from "@/lib/utils";
 import { ReportReason, Review } from "@/types/review";
 
@@ -38,7 +38,6 @@ export function openReportReview(review: Review) {
 const ERROR_MESSAGES: Partial<Record<string, string>> = {
   ALREADY_REPORTED: "이미 신고한 리뷰예요.",
   FORBIDDEN: "내 리뷰는 신고할 수 없어요.",
-  USER_SUSPENDED: "이용이 정지된 동안에는 신고할 수 없어요.",
 };
 
 // Figma: 11 Report Review (36:1877) — 사유 1개 선택 + 메모(선택, 200자)
@@ -58,6 +57,7 @@ export default function ReportReviewModal({ isOpen, review, onClose }: ReportRev
     } catch (error) {
       const code = error instanceof ApiError ? error.code : "";
       if (code === "UNAUTHORIZED") return openLoginRequired("report");
+      if (error instanceof ApiError && code === "USER_SUSPENDED") return notify.error(suspendedNotice(error.message, error.until, "신고할"));
       notify.error(ERROR_MESSAGES[code] ?? "신고하지 못했어요. 잠시 후 다시 시도해 주세요.");
       if (code === "ALREADY_REPORTED" || code === "FORBIDDEN") onClose();
     } finally {

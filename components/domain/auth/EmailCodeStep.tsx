@@ -3,7 +3,7 @@ import AuthTextField from "@/components/domain/auth/AuthTextField";
 import Button from "@/components/ui/button";
 import { MOCK_EMAIL_CODE_HINT } from "@/constants/user";
 import { formatTimer, EmailVerification } from "@/hooks/useEmailVerification";
-import { usesMock } from "@/lib/api/client";
+import { USE_MOCK } from "@/lib/api/client";
 
 interface EmailCodeStepProps {
   v: EmailVerification;
@@ -51,7 +51,7 @@ export default function EmailCodeStep({ v, emailFooter }: EmailCodeStepProps) {
             value={v.code}
             onChange={(e) => v.setCode(e.target.value)}
             error={v.codeError}
-            hint={usesMock("/auth/email/code") ? MOCK_EMAIL_CODE_HINT : "메일이 안 보이면 스팸함도 확인해 주세요."}
+            hint={USE_MOCK ? MOCK_EMAIL_CODE_HINT : "메일이 안 보이면 스팸함도 확인해 주세요."}
             trailing={
               <span aria-label="남은 시간" className="shrink-0 text-footnote font-semibold tabular-nums text-brand-primary">
                 {formatTimer(v.remainingSec)}

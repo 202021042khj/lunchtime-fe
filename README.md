@@ -32,23 +32,23 @@ npm run build      # 프로덕션 빌드
 | --- | --- |
 | `NEXT_PUBLIC_KAKAO_JS_KEY` | 카카오 지도 JS SDK (localhost:3000 도메인 등록 필요) |
 | `KAKAO_REST_API_KEY` · `KMA_SERVICE_KEY` · `KMA_BASE_URL` | 0단계 검증 스크립트(`scripts/spike/`)용. 앱은 쓰지 않는다 |
-| `NEXT_PUBLIC_API_MOCK` | `false`면 목 대신 실서버로 요청 (기본: 목) |
-| `NEXT_PUBLIC_API_BASE_URL` | 실서버 주소 (기본 `https://api.lunchtime.example/v1`, 로컬 백엔드는 `http://localhost:4000/v1`) |
-| `NEXT_PUBLIC_API_REAL` | 목을 쓰면서 백엔드가 만들어진 기능만 실서버로 보낸다. 쉼표로 묶음: `auth`(`/auth/*` · `/me` · `/me/password`), `taste`(`/me/preferences` · `/preferences/*` · `/ingredients`), `locations`(`/me/locations` · `/locations/*`), `restaurants`(`/restaurants*` · `/me/favorites*`, 리뷰 경로 제외), `weather`, `recommendations`(`/recommendations` · `/search`), `reviews`(`/restaurants/{id}/reviews` · `/review-form` · `/uploads/review-photos` · `/me/reviews` · `/reviews/*`), `admin`(어드민 로그인 · 메뉴 · 광고 · 사진, 유저 관리 · 신고는 아직 목). 2단계 중간 확인용 |
+| `NEXT_PUBLIC_API_BASE_URL` | 백엔드 주소 (기본 `http://localhost:4000/v1` = 로컬 `lunchtime-be`). 배포 환경은 꼭 넣는다 |
+| `NEXT_PUBLIC_API_MOCK` | `true`면 백엔드 없이 목 데이터로 화면만 본다 (기본: 실서버) |
 | `NEXT_PUBLIC_KAKAO_REST_KEY` | 웹 카카오 로그인 인가 요청의 `client_id` (카카오 REST 키) |
 | `NEXT_PUBLIC_GOOGLE_CLIENT_ID` | 웹 구글 로그인 인가 요청의 `client_id` (Google Cloud OAuth 클라이언트, 웹) |
-| `NEXT_PUBLIC_MOCK_SCENARIO` | 목 예외 상황 (아래 참고) |
+| `NEXT_PUBLIC_MOCK_SCENARIO` | 목 예외 상황 (`NEXT_PUBLIC_API_MOCK=true`일 때만, 아래 참고) |
 
-**일부 기능만 실서버로 확인하기** (`NEXT_PUBLIC_API_REAL=auth,taste,locations,restaurants,weather,recommendations,reviews,admin`)
+**로컬 백엔드로 실행하기** (기본)
 
 - `../lunchtime-be`에서 `npm run db:up` → `npm run start:dev`(4000)를 먼저 띄운다
 - 이메일: `test@lunchtime.dev` / `lunch1234`. 새로 가입할 때 인증번호는 백엔드 서버 로그에 나온다
 - 카카오: [카카오로 계속하기] → 카카오 로그인 → `/login/kakao/callback` → 온보딩 또는 원래 화면. 카카오 개발자 콘솔(앱 → 플랫폼 키 → REST API 키)에 Redirect URI `http://localhost:3000/login/kakao/callback`을 등록하고, 백엔드 `.env`에 `KAKAO_APP_ID` · `KAKAO_CLIENT_SECRET`을 넣어야 한다
 - 구글: 같은 방식으로 `/login/google/callback`. Google Cloud 콘솔 OAuth 클라이언트(웹)에 이 주소를 승인된 리디렉션 URI로 등록하고, client ID를 `NEXT_PUBLIC_GOOGLE_CLIENT_ID`와 백엔드 `GOOGLE_CLIENT_IDS`에, secret을 `GOOGLE_CLIENT_SECRET`에 넣는다
 - Apple: 버튼은 "서비스 준비 중"으로 비활성화 (개발자 계정 · https 주소 준비 후)
-- 어드민 유저 관리 · 리뷰 신고 처리만 아직 목이고, 나머지(로그인 · 취향 · 위치 · 추천 · 검색 · 식당 · 찜 · 날씨 · 리뷰 · 리뷰 사진 · 신고 · 어드민 메뉴 · 광고 · 사진)는 실서버다
+- 어드민 accessToken(30분)이 끝나면 refreshToken(12시간)으로 자동으로 다시 받고, 그것도 끝나면 어드민 로그인 화면으로 간다
 - 리뷰 사진 · 어드민 사진은 백엔드 docker-compose의 저장소(RustFS, 9000)에 올라간다. 어드민 로그인은 `admin` / `admin1234` / OTP `123456`(개발 환경)
-- 아직 목인 화면이 같은 로그인 상태로 보이도록 실서버 로그인 · 로그아웃을 목에도 알린다(`lunchtime.mockAuth`)
+- API 계약 검사: 백엔드를 띄운 채 `npm run check:contract`. 실서버 응답을 프론트 타입(`types/*`)에 그대로 넣어 tsc로 확인한다(빠진 · 남는 필드, 값 종류). 확인용 계정 · 리뷰는 끝나면 지운다
+- 음식 종류 일러스트(`public/cuisine/*.webp`)가 없는 종류는 브라우저 개발자 도구에 404가 보인다. 아이콘으로 대신 보여 주므로 정상이다
 
 ## 음식 종류별 대체 이미지
 

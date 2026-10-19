@@ -1,51 +1,20 @@
 import { ApiErrorBody, ErrorCode } from "@/types/common";
 import { AuthTokens } from "@/types/user";
-import { clearTokens, getAccessToken, getAdminAccessToken, getRefreshToken, saveTokens } from "@/lib/api/token";
+import {
+  clearAdminToken,
+  clearTokens,
+  getAccessToken,
+  getAdminAccessToken,
+  getAdminRefreshToken,
+  getRefreshToken,
+  saveAdminToken,
+  saveTokens,
+} from "@/lib/api/token";
 
-const BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL ?? "https://api.lunchtime.example/v1";
-// 백엔드가 생기기 전까지 기본은 목. 실서버를 쓰려면 NEXT_PUBLIC_API_MOCK=false
-export const USE_MOCK = process.env.NEXT_PUBLIC_API_MOCK !== "false";
-// 2단계 중간 확인용: 목을 쓰면서 백엔드가 만들어진 기능만 실서버로 보낸다.
-// NEXT_PUBLIC_API_REAL=auth,taste,locations (쉼표로 기능 묶음). 백엔드 단계가 끝날 때마다 묶음을 늘린다
-// 리뷰 목록 · 쓰기 · 사진 · 내 리뷰 · 수정 · 삭제 · 신고
-const isReviewPath = (p: string) =>
-  /^\/restaurants\/[^/]+\/(reviews|review-form)$/.test(p) || p === "/uploads/review-photos" || p === "/me/reviews" || p.startsWith("/reviews/");
-const REAL_GROUPS: Record<string, (path: string) => boolean> = {
-  auth: (p) => p.startsWith("/auth/") || p === "/me" || p === "/me/password",
-  taste: (p) => p === "/me/preferences" || p.startsWith("/preferences/") || p === "/ingredients",
-  locations: (p) => p === "/me/locations" || p.startsWith("/me/locations/") || p.startsWith("/locations/"),
-  restaurants: (p) =>
-    (p === "/restaurants" || p.startsWith("/restaurants/") || p === "/me/favorites" || p.startsWith("/me/favorites/")) && !isReviewPath(p),
-  weather: (p) => p === "/weather",
-  recommendations: (p) => p === "/recommendations" || p === "/search",
-  reviews: isReviewPath,
-  // 어드민 로그인 · 메뉴 관리 · 광고 · 사진 (유저 관리 · 리뷰 신고는 2단계-5까지 목)
-  admin: (p) =>
-    p.startsWith("/admin/auth/") ||
-    p === "/admin/me" ||
-    ["/admin/menus", "/admin/ingredients", "/admin/sponsored", "/admin/places", "/admin/uploads"].some((x) => p === x || p.startsWith(`${x}/`)),
-};
-const REAL = USE_MOCK
-  ? (process.env.NEXT_PUBLIC_API_REAL ?? "")
-      .split(",")
-      .map((g) => REAL_GROUPS[g.trim()])
-      .filter(Boolean)
-  : [];
-
-// 어드민 로그인을 실서버로 하면 아직 목인 어드민 화면도 그 토큰을 받아야 한다
-export const realAdminAuth = () => REAL.includes(REAL_GROUPS.admin);
-
-// 이 경로를 목으로 처리하는지
-export const usesMock = (path: string) => USE_MOCK && !REAL.some((isReal) => isReal(path));
-
-// 실서버로 로그인 · 로그아웃 · 탈퇴하면 목 로그인 상태도 맞춘다 (아직 목인 화면이 같은 상태로 보이게)
-const SIGN_IN_PATHS = ["/auth/login", "/auth/email/login", "/auth/email/signup"];
-async function syncMock(method: HttpMethod, path: string) {
-  const signedIn = SIGN_IN_PATHS.includes(path) ? true : path === "/auth/logout" || (method === "DELETE" && path === "/me") ? false : null;
-  if (signedIn === null) return;
-  const { setMockSignedIn } = await import("@/lib/api/mock/handlers");
-  setMockSignedIn(signedIn);
-}
+// 배포 환경은 NEXT_PUBLIC_API_BASE_URL을 꼭 넣는다. 없으면 로컬 백엔드(lunchtime-be, 4000)
+const BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://localhost:4000/v1";
+// 백엔드 없이 화면만 볼 때 NEXT_PUBLIC_API_MOCK=true (목 데이터 · NEXT_PUBLIC_MOCK_SCENARIO)
+export const USE_MOCK = process.env.NEXT_PUBLIC_API_MOCK === "true";
 
 export type HttpMethod = "GET" | "POST" | "PUT" | "PATCH" | "DELETE";
 
@@ -101,6 +70,7 @@ async function send(method: HttpMethod, path: string, { query, body, form, auth 
 }
 
 let refreshing: Promise<boolean> | null = null;
+let refreshingAdmin: Promise<boolean> | null = null;
 
 // 동시에 여러 요청이 401을 받아도 refresh는 한 번만
 function refreshTokens(): Promise<boolean> {
@@ -124,6 +94,31 @@ function refreshTokens(): Promise<boolean> {
   return refreshing;
 }
 
+// 어드민 accessToken(30분)이 끝나면 refreshToken으로 다시 받는다. 실패하면 어드민 로그인 화면으로
+function refreshAdminTokens(): Promise<boolean> {
+  refreshingAdmin ??= (async () => {
+    const refreshToken = getAdminRefreshToken();
+    if (!refreshToken) return false;
+    const res = await fetch(`${BASE_URL}/admin/auth/refresh`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ refreshToken }),
+    });
+    if (!res.ok) {
+      clearAdminToken();
+      const { markAdminGuest } = await import("@/lib/adminStore");
+      markAdminGuest();
+      return false;
+    }
+    const tokens = (await res.json()) as AuthTokens;
+    saveAdminToken(tokens.accessToken, tokens.refreshToken);
+    return true;
+  })().finally(() => {
+    refreshingAdmin = null;
+  });
+  return refreshingAdmin;
+}
+
 async function toApiError(res: Response): Promise<ApiError> {
   const body = (await res.json().catch(() => null)) as ApiErrorBody | null;
   if (!body?.error) return new ApiError(res.status, "UPSTREAM_UNAVAILABLE", "잠시 후 다시 시도해 주세요.");
@@ -132,7 +127,7 @@ async function toApiError(res: Response): Promise<ApiError> {
 }
 
 export async function request<T>(method: HttpMethod, path: string, options: RequestOptions = {}): Promise<T> {
-  if (usesMock(path)) {
+  if (USE_MOCK) {
     const { handleMock } = await import("@/lib/api/mock/handlers");
     return handleMock(method, path, toSearchParams(options.query), options.form ?? options.body) as Promise<T>;
   }
@@ -142,9 +137,11 @@ export async function request<T>(method: HttpMethod, path: string, options: Requ
   if (res.status === 401 && options.auth !== "admin" && !path.startsWith("/auth/") && (await refreshTokens())) {
     res = await send(method, path, options);
   }
+  if (res.status === 401 && options.auth === "admin" && !path.startsWith("/admin/auth/") && (await refreshAdminTokens())) {
+    res = await send(method, path, options);
+  }
   if (!res.ok) throw await toApiError(res);
   let result: unknown = undefined;
   if (res.status !== 204) result = options.text ? await res.text() : await res.json();
-  if (REAL.length) await syncMock(method, path);
   return result as T;
 }

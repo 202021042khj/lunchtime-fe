@@ -42,3 +42,6 @@ next-env.d.ts
 
 # spike 실데이터
 scripts/spike/out/
+
+# API 계약 검사가 만드는 파일 (실서버 응답)
+scripts/contract/generated.ts

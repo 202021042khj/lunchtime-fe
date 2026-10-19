@@ -42,14 +42,21 @@ export function clearTokens(): void {
 // 실서버에서는 httpOnly 쿠키로 받는 걸 권장한다 (어드민은 웹에서만 쓰므로). 목 단계에서는 localStorage
 
 const ADMIN_ACCESS_KEY = "lunchtime.adminAccessToken";
+// accessToken(30분)이 끝나면 이걸로 다시 받는다 (12시간, 쓸 때마다 새로 바뀜)
+const ADMIN_REFRESH_KEY = "lunchtime.adminRefreshToken";
 
 export function getAdminAccessToken(): string | null {
   return read(ADMIN_ACCESS_KEY);
 }
 
-export function saveAdminToken(accessToken: string): void {
+export function getAdminRefreshToken(): string | null {
+  return read(ADMIN_REFRESH_KEY);
+}
+
+export function saveAdminToken(accessToken: string, refreshToken?: string): void {
   try {
     window.localStorage.setItem(ADMIN_ACCESS_KEY, accessToken);
+    if (refreshToken) window.localStorage.setItem(ADMIN_REFRESH_KEY, refreshToken);
   } catch {
     // 저장 못 하면 이번 세션만
   }
@@ -58,6 +65,7 @@ export function saveAdminToken(accessToken: string): void {
 export function clearAdminToken(): void {
   try {
     window.localStorage.removeItem(ADMIN_ACCESS_KEY);
+    window.localStorage.removeItem(ADMIN_REFRESH_KEY);
   } catch {
     // 무시
   }

@@ -14,7 +14,7 @@ import { notify } from "@/components/ui/notify/notify-utils";
 import { RATING_LABELS, REVIEW_LIMITS } from "@/constants/review";
 import { ApiError } from "@/lib/api/client";
 import { createReview, getReviewForm, requestPhotoUploads, updateReview } from "@/lib/api/reviews";
-import { joinMeta } from "@/lib/format";
+import { joinMeta, suspendedNotice } from "@/lib/format";
 import { cn } from "@/lib/utils";
 import { Restaurant } from "@/types/restaurant";
 import { CreateReviewResponse, Review, ReviewForm } from "@/types/review";
@@ -88,7 +88,6 @@ const ERROR_MESSAGES: Partial<Record<string, string>> = {
   REVIEW_DAILY_LIMIT: "이 식당에는 오늘 이미 리뷰를 썼어요. 내일 다시 남겨 주세요.",
   REVIEW_TOO_LONG: "후기는 500자까지 쓸 수 있어요.",
   TOO_MANY_PHOTOS: "사진은 5장까지 올릴 수 있어요.",
-  USER_SUSPENDED: "이용이 정지된 동안에는 리뷰를 쓸 수 없어요.",
 };
 
 const PHOTO_UPLOAD_FAILED = "사진을 올리지 못했어요. 사진을 다시 골라 주세요.";
@@ -217,6 +216,7 @@ export default function WriteReviewModal({ isOpen, place, editing = null, onClos
       if (code === "UNAUTHORIZED") return openLoginRequired("review");
       // 올리기 실패, 또는 서버가 사진 id를 받지 않음(주소 만료 등)
       if (error instanceof ApiError && (error.message === PHOTO_UPLOAD_FAILED || error.fields?.photoIds)) return notify.error(PHOTO_UPLOAD_FAILED);
+      if (error instanceof ApiError && code === "USER_SUSPENDED") return notify.error(suspendedNotice(error.message, error.until, "리뷰를 쓸"));
       notify.error(ERROR_MESSAGES[code] ?? `리뷰를 ${editing ? "수정" : "등록"}하지 못했어요. 잠시 후 다시 시도해 주세요.`);
     } finally {
       setSubmitting(false);

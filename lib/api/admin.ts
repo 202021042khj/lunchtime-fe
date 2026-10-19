@@ -1,5 +1,5 @@
 import { request } from "@/lib/api/client";
-import { clearAdminToken, saveAdminToken } from "@/lib/api/token";
+import { clearAdminToken, getAdminRefreshToken, saveAdminToken } from "@/lib/api/token";
 import {
   AdminImagePurpose,
   AdminLoginRequest,
@@ -33,13 +33,14 @@ const admin = { auth: "admin" } as const;
 
 export async function adminLogin(input: AdminLoginRequest): Promise<AdminLoginResponse> {
   const res = await request<AdminLoginResponse>("POST", "/admin/auth/login", { ...admin, body: input });
-  saveAdminToken(res.accessToken);
+  saveAdminToken(res.accessToken, res.refreshToken);
   return res;
 }
 
 export async function adminLogout(): Promise<void> {
   try {
-    await request<void>("POST", "/admin/auth/logout", admin);
+    // 이 기기의 refreshToken만 폐기한다 (없으면 서버가 이 운영자의 모든 토큰을 폐기)
+    await request<void>("POST", "/admin/auth/logout", { ...admin, body: { refreshToken: getAdminRefreshToken() ?? undefined } });
   } finally {
     clearAdminToken();
   }

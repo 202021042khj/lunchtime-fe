@@ -1,4 +1,4 @@
-import { usesMock } from "@/lib/api/client";
+import { USE_MOCK } from "@/lib/api/client";
 import { PROVIDER_LABELS } from "@/constants/user";
 import { socialCallbackRoute } from "@/constants/navigation";
 import { SocialProvider } from "@/types/user";
@@ -7,7 +7,7 @@ import { SocialProvider } from "@/types/user";
 // 인가 코드를 받아 온다(/login/<회사>/callback → POST /auth/login { code, redirectUri }).
 // 앱(웹뷰)의 토큰 브리지는 아직 미결정이다
 export async function getProviderToken(provider: SocialProvider): Promise<string> {
-  if (usesMock("/auth/login")) return `mock-${provider}-token`;
+  if (USE_MOCK) return `mock-${provider}-token`;
   throw new Error(`${PROVIDER_LABELS[provider]} 로그인은 아직 연결되지 않았어요.`);
 }
 
@@ -39,7 +39,7 @@ export const isRedirectProvider = (value: string): value is RedirectProvider => 
 
 // 실서버로 로그인할 때만 리다이렉트한다 (목이면 기존처럼 가짜 토큰)
 export const usesSocialRedirect = (provider: SocialProvider): provider is RedirectProvider =>
-  isRedirectProvider(provider) && !usesMock("/auth/login");
+  isRedirectProvider(provider) && !USE_MOCK;
 
 export const socialRedirectUri = (provider: RedirectProvider) => `${window.location.origin}${socialCallbackRoute(provider)}`;
 
