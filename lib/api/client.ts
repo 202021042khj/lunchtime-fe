@@ -13,6 +13,7 @@ const REAL_GROUPS: Record<string, (path: string) => boolean> = {
   locations: (p) => p === "/me/locations" || p.startsWith("/me/locations/") || p.startsWith("/locations/"),
   restaurants: (p) => p === "/restaurants" || p.startsWith("/restaurants/") || p === "/me/favorites" || p.startsWith("/me/favorites/"),
   weather: (p) => p === "/weather",
+  recommendations: (p) => p === "/recommendations" || p === "/search",
   // 어드민 로그인 · 메뉴 관리 · 광고 · 사진 (유저 관리 · 리뷰 신고는 2단계-5까지 목)
   admin: (p) =>
     p.startsWith("/admin/auth/") ||
@@ -32,17 +33,13 @@ export const realAdminAuth = () => REAL.includes(REAL_GROUPS.admin);
 // 이 경로를 목으로 처리하는지
 export const usesMock = (path: string) => USE_MOCK && !REAL.some((isReal) => isReal(path));
 
-// 실서버 응답을 목에도 알려, 아직 목인 화면(추천 등)이 같은 상태로 보이게 맞춘다
-//  - 로그인 · 로그아웃 · 탈퇴 → 목 로그인 상태
-//  - 내 취향 읽기 · 저장 → 목 취향 (홈 추천의 personal · popular 모드)
+// 실서버로 로그인 · 로그아웃 · 탈퇴하면 목 로그인 상태도 맞춘다 (아직 목인 리뷰 화면이 같은 상태로 보이게)
 const SIGN_IN_PATHS = ["/auth/login", "/auth/email/login", "/auth/email/signup"];
-async function syncMock(method: HttpMethod, path: string, result: unknown) {
-  const mock = await import("@/lib/api/mock/handlers");
-  if (SIGN_IN_PATHS.includes(path)) mock.setMockSignedIn(true);
-  else if (path === "/auth/logout" || (method === "DELETE" && path === "/me")) mock.setMockSignedIn(false);
-  else if (path === "/me/preferences" && (method === "GET" || method === "PUT")) {
-    await mock.handleMock("PUT", "/me/preferences", new URLSearchParams(), result).catch(() => undefined);
-  }
+async function syncMock(method: HttpMethod, path: string) {
+  const signedIn = SIGN_IN_PATHS.includes(path) ? true : path === "/auth/logout" || (method === "DELETE" && path === "/me") ? false : null;
+  if (signedIn === null) return;
+  const { setMockSignedIn } = await import("@/lib/api/mock/handlers");
+  setMockSignedIn(signedIn);
 }
 
 export type HttpMethod = "GET" | "POST" | "PUT" | "PATCH" | "DELETE";
@@ -143,6 +140,6 @@ export async function request<T>(method: HttpMethod, path: string, options: Requ
   if (!res.ok) throw await toApiError(res);
   let result: unknown = undefined;
   if (res.status !== 204) result = options.text ? await res.text() : await res.json();
-  if (REAL.length) await syncMock(method, path, result);
+  if (REAL.length) await syncMock(method, path);
   return result as T;
 }
