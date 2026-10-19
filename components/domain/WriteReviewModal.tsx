@@ -5,7 +5,7 @@ import { ImageIcon, Plus, Star, X } from "lucide-react";
 import { overlay } from "overlay-kit";
 import { ChangeEvent, FormEvent, useEffect, useRef, useState } from "react";
 import { confirm } from "@/components/common/ConfirmDialog";
-import FoodImage from "@/components/common/FoodImage";
+import FoodImage, { isExampleImage } from "@/components/common/FoodImage";
 import SelectChip from "@/components/common/SelectChip";
 import Button from "@/components/ui/button";
 import { DialogOverlay, DialogPortal } from "@/components/ui/dialog";
@@ -26,6 +26,8 @@ interface ReviewPlace {
   imageUrl: string | null;
   // 음식 종류: 사진이 없을 때 종류별 대체 이미지 (MY에서는 모름)
   cuisine?: string;
+  // 식당의 실제 사진이 아니면 "예시" 배지
+  example?: boolean;
   meta: string | null;
 }
 
@@ -69,6 +71,7 @@ export function openWriteReview(restaurant: Restaurant, onCreated: (result: Crea
       name: restaurant.name,
       imageUrl: restaurant.imageUrl,
       cuisine: restaurant.category,
+      example: isExampleImage(restaurant),
       meta: joinMeta([restaurant.category, restaurant.mainMenu, neighborhoodOf(restaurant.address)]),
     },
     null,
@@ -87,6 +90,11 @@ const ERROR_MESSAGES: Partial<Record<string, string>> = {
   TOO_MANY_PHOTOS: "사진은 5장까지 올릴 수 있어요.",
   USER_SUSPENDED: "이용이 정지된 동안에는 리뷰를 쓸 수 없어요.",
 };
+
+const PHOTO_UPLOAD_FAILED = "사진을 올리지 못했어요. 사진을 다시 골라 주세요.";
+// 서버가 받는 사진 (API.md 리뷰 사진)
+const PHOTO_TYPES = ["image/jpeg", "image/png", "image/webp"];
+const PHOTO_MAX_BYTES = 5 * 1024 * 1024;
 
 // "서울 강남구 역삼동 123-45" → "역삼동"
 function neighborhoodOf(address: string): string | null {
@@ -154,8 +162,10 @@ export default function WriteReviewModal({ isOpen, place, editing = null, onClos
   };
 
   const addPhotos = (e: ChangeEvent<HTMLInputElement>) => {
-    const files = Array.from(e.target.files ?? []);
+    const picked = Array.from(e.target.files ?? []);
     e.target.value = "";
+    const files = picked.filter((f) => PHOTO_TYPES.includes(f.type) && f.size <= PHOTO_MAX_BYTES);
+    if (files.length < picked.length) notify.error("JPG · PNG · WEBP 사진, 5MB까지 올릴 수 있어요.");
     const room = REVIEW_LIMITS.photos - photos.length;
     if (files.length > room) notify.error("사진은 5장까지 올릴 수 있어요.");
     setPhotos((prev) => [
@@ -180,19 +190,20 @@ export default function WriteReviewModal({ isOpen, place, editing = null, onClos
     }
     setSubmitting(true);
     try {
-      // 사진은 미리 서명된 URL로 먼저 올리고, 받은 id만 리뷰에 담는다 (저장소 미결정 · API.md 가정)
+      // 사진은 받은 업로드 주소(서명된 URL)에 먼저 올리고, 받은 id만 리뷰에 담는다
       const keptIds = photos.flatMap((ph) => (ph.photoId ? [ph.photoId] : []));
       const newFiles = photos.flatMap((ph) => (ph.file ? [ph.file] : []));
       let newIds: string[] = [];
       if (newFiles.length) {
         const { items } = await requestPhotoUploads(newFiles.length);
-        await Promise.all(
+        const uploaded = await Promise.all(
           items.map((slot, i) =>
             slot.uploadUrl.startsWith("https://upload.mock")
-              ? Promise.resolve()
-              : fetch(slot.uploadUrl, { method: "PUT", body: newFiles[i] }),
+              ? true
+              : fetch(slot.uploadUrl, { method: "PUT", body: newFiles[i] }).then((res) => res.ok, () => false),
           ),
         );
+        if (uploaded.includes(false)) throw new ApiError(400, "VALIDATION_FAILED", PHOTO_UPLOAD_FAILED);
         newIds = items.map((slot) => slot.photoId);
       }
       const input = { rating, menus, tags, content: content.trim() || null, photoIds: [...keptIds, ...newIds] };
@@ -204,6 +215,8 @@ export default function WriteReviewModal({ isOpen, place, editing = null, onClos
       const code = error instanceof ApiError ? error.code : "";
       // 세션이 끝났으면 로그인 팝업을 모달 위에 띄운다 ("다음에 할게요"면 쓰던 내용이 그대로 남는다)
       if (code === "UNAUTHORIZED") return openLoginRequired("review");
+      // 올리기 실패, 또는 서버가 사진 id를 받지 않음(주소 만료 등)
+      if (error instanceof ApiError && (error.message === PHOTO_UPLOAD_FAILED || error.fields?.photoIds)) return notify.error(PHOTO_UPLOAD_FAILED);
       notify.error(ERROR_MESSAGES[code] ?? `리뷰를 ${editing ? "수정" : "등록"}하지 못했어요. 잠시 후 다시 시도해 주세요.`);
     } finally {
       setSubmitting(false);
@@ -240,7 +253,7 @@ export default function WriteReviewModal({ isOpen, place, editing = null, onClos
 
             <div className="min-h-0 flex-1 overflow-y-auto px-5 pb-6 md:px-8 md:pt-6">
               <div className="flex items-center gap-3 rounded-[18px] bg-brand-primary-tint p-3">
-                <FoodImage src={place.imageUrl} alt={place.name} compact cuisine={place.cuisine} className="size-12 shrink-0 rounded-xl" />
+                <FoodImage src={place.imageUrl} alt={place.name} compact cuisine={place.cuisine} exampleNotice={place.example && "badge"} className="size-12 shrink-0 rounded-xl" />
                 <div className="flex min-w-0 flex-col gap-0.5">
                   <p className="truncate text-headline text-labels-primary">{place.name}</p>
                   {place.meta && <p className="truncate text-footnote text-labels-secondary">{place.meta}</p>}
@@ -398,7 +411,7 @@ export default function WriteReviewModal({ isOpen, place, editing = null, onClos
                         </div>
                       )}
                     </div>
-                    <input ref={fileInputRef} type="file" accept="image/*" multiple hidden onChange={addPhotos} />
+                    <input ref={fileInputRef} type="file" accept={PHOTO_TYPES.join(",")} multiple hidden onChange={addPhotos} />
                   </section>
                 </div>
               </div>

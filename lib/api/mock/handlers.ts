@@ -248,6 +248,7 @@ function toRestaurant(seed: MockRestaurant, origin: LatLng, menuId: string | nul
   return {
     ...base,
     ...placeStats(seed.placeId),
+    imageSource: seed.imageUrl ? "sponsored" : null,
     distanceM: d,
     walkMinutes: walkMinutes(d),
     isFavorite: !!user && state.favorites.some((f) => f.placeId === seed.placeId),

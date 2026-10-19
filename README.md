@@ -34,21 +34,35 @@ npm run build      # 프로덕션 빌드
 | `KAKAO_REST_API_KEY` · `KMA_SERVICE_KEY` · `KMA_BASE_URL` | 0단계 검증 스크립트(`scripts/spike/`)용. 앱은 쓰지 않는다 |
 | `NEXT_PUBLIC_API_MOCK` | `false`면 목 대신 실서버로 요청 (기본: 목) |
 | `NEXT_PUBLIC_API_BASE_URL` | 실서버 주소 (기본 `https://api.lunchtime.example/v1`, 로컬 백엔드는 `http://localhost:4000/v1`) |
-| `NEXT_PUBLIC_API_REAL` | 목을 쓰면서 백엔드가 만들어진 기능만 실서버로 보낸다. 쉼표로 묶음: `auth`(`/auth/*` · `/me` · `/me/password`), `taste`(`/me/preferences` · `/preferences/*` · `/ingredients`), `locations`(`/me/locations` · `/locations/*`), `restaurants`(`/restaurants*` · `/me/favorites*`), `weather`, `recommendations`(`/recommendations` · `/search`), `admin`(어드민 로그인 · 메뉴 · 광고 · 사진, 유저 관리 · 신고는 아직 목). 2단계 중간 확인용 |
+| `NEXT_PUBLIC_API_REAL` | 목을 쓰면서 백엔드가 만들어진 기능만 실서버로 보낸다. 쉼표로 묶음: `auth`(`/auth/*` · `/me` · `/me/password`), `taste`(`/me/preferences` · `/preferences/*` · `/ingredients`), `locations`(`/me/locations` · `/locations/*`), `restaurants`(`/restaurants*` · `/me/favorites*`, 리뷰 경로 제외), `weather`, `recommendations`(`/recommendations` · `/search`), `reviews`(`/restaurants/{id}/reviews` · `/review-form` · `/uploads/review-photos` · `/me/reviews` · `/reviews/*`), `admin`(어드민 로그인 · 메뉴 · 광고 · 사진, 유저 관리 · 신고는 아직 목). 2단계 중간 확인용 |
 | `NEXT_PUBLIC_KAKAO_REST_KEY` | 웹 카카오 로그인 인가 요청의 `client_id` (카카오 REST 키) |
 | `NEXT_PUBLIC_GOOGLE_CLIENT_ID` | 웹 구글 로그인 인가 요청의 `client_id` (Google Cloud OAuth 클라이언트, 웹) |
 | `NEXT_PUBLIC_MOCK_SCENARIO` | 목 예외 상황 (아래 참고) |
 
-**일부 기능만 실서버로 확인하기** (`NEXT_PUBLIC_API_REAL=auth,taste,locations,restaurants,weather,recommendations,admin`)
+**일부 기능만 실서버로 확인하기** (`NEXT_PUBLIC_API_REAL=auth,taste,locations,restaurants,weather,recommendations,reviews,admin`)
 
 - `../lunchtime-be`에서 `npm run db:up` → `npm run start:dev`(4000)를 먼저 띄운다
 - 이메일: `test@lunchtime.dev` / `lunch1234`. 새로 가입할 때 인증번호는 백엔드 서버 로그에 나온다
 - 카카오: [카카오로 계속하기] → 카카오 로그인 → `/login/kakao/callback` → 온보딩 또는 원래 화면. 카카오 개발자 콘솔(앱 → 플랫폼 키 → REST API 키)에 Redirect URI `http://localhost:3000/login/kakao/callback`을 등록하고, 백엔드 `.env`에 `KAKAO_APP_ID` · `KAKAO_CLIENT_SECRET`을 넣어야 한다
 - 구글: 같은 방식으로 `/login/google/callback`. Google Cloud 콘솔 OAuth 클라이언트(웹)에 이 주소를 승인된 리디렉션 URI로 등록하고, client ID를 `NEXT_PUBLIC_GOOGLE_CLIENT_ID`와 백엔드 `GOOGLE_CLIENT_IDS`에, secret을 `GOOGLE_CLIENT_SECRET`에 넣는다
 - Apple: 버튼은 "서비스 준비 중"으로 비활성화 (개발자 계정 · https 주소 준비 후)
-- 리뷰 · 어드민 유저 관리 · 리뷰 신고만 아직 목이고, 나머지(로그인 · 취향 · 위치 · 추천 · 검색 · 식당 · 찜 · 날씨 · 어드민 메뉴 · 광고 · 사진)는 실서버다
-- 어드민 사진은 백엔드 docker-compose의 저장소(RustFS, 9000)에 올라간다. 어드민 로그인은 `admin` / `admin1234` / OTP `123456`(개발 환경)
-- 목 리뷰 화면이 같은 로그인 상태로 보이도록 실서버 로그인 · 로그아웃을 목에도 알린다(`lunchtime.mockAuth`)
+- 어드민 유저 관리 · 리뷰 신고 처리만 아직 목이고, 나머지(로그인 · 취향 · 위치 · 추천 · 검색 · 식당 · 찜 · 날씨 · 리뷰 · 리뷰 사진 · 신고 · 어드민 메뉴 · 광고 · 사진)는 실서버다
+- 리뷰 사진 · 어드민 사진은 백엔드 docker-compose의 저장소(RustFS, 9000)에 올라간다. 어드민 로그인은 `admin` / `admin1234` / OTP `123456`(개발 환경)
+- 아직 목인 화면이 같은 로그인 상태로 보이도록 실서버 로그인 · 로그아웃을 목에도 알린다(`lunchtime.mockAuth`)
+
+## 음식 종류별 대체 이미지
+
+우리 사진(리뷰 · 광고 · 메뉴)이 없는 식당은 음식 종류별 대체 이미지를 보여 준다(`components/common/FoodImage.tsx`). `public/cuisine/`에 아래 이름으로 일러스트를 넣으면 그 그림을, 없으면 종류별 아이콘을 보여 준다. 파일을 넣고 배포하면 바로 바뀌고 코드는 고치지 않아도 된다.
+
+| 종류 | 파일 |
+| --- | --- |
+| 한식 · 중식 · 일식 · 양식 | `korean.webp` · `chinese.webp` · `japanese.webp` · `western.webp` |
+| 분식 · 아시안 · 패스트푸드 · 샐러드·건강식 | `snack.webp` · `asian.webp` · `fastfood.webp` · `salad.webp` |
+| 그 밖의 종류 | `other.webp` |
+
+- 정사각형(권장 480×480 이상), 가운데에 주요 그림을 둔다. 카드 · 썸네일 비율에 맞춰 가운데 기준으로 잘린다
+- 파일 이름은 주소 인코딩 문제가 없게 영문으로 둔다
+- 이 식당의 실제 사진(리뷰 · 광고)이 아니면(메뉴 대표 사진 · 일러스트 · 아이콘) 큰 사진에는 "예시 이미지로, 실제 식당 음식과 다를 수 있어요", 목록 썸네일에는 "예시" 배지가 붙는다(`FoodImage`의 `exampleNotice`, 식당 응답의 `imageSource`)
 
 ## 화면
 

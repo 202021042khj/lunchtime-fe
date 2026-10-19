@@ -1,4 +1,4 @@
-import FoodImage from "@/components/common/FoodImage";
+import FoodImage, { isExampleImage } from "@/components/common/FoodImage";
 import FavoriteButton from "@/components/domain/FavoriteButton";
 import MenuEvidenceLine from "@/components/domain/MenuEvidenceLine";
 import { formatDistance, formatRating, joinMeta } from "@/lib/format";
@@ -22,7 +22,7 @@ export default function RestaurantRow({ restaurant, onSelect, onToggleFavorite, 
 
   const content = (
     <>
-      <FoodImage src={r.imageUrl} alt="" compact cuisine={r.category} className="size-[60px] shrink-0 rounded-[14px]" />
+      <FoodImage src={r.imageUrl} alt="" compact cuisine={r.category} exampleNotice={isExampleImage(r) && "badge"} className="size-[60px] shrink-0 rounded-[14px]" />
       <span className="flex min-w-0 flex-1 flex-col gap-0.5">
         <span className="flex min-w-0 items-center gap-1.5">
           <span className="truncate text-headline text-labels-primary">{r.name}</span>

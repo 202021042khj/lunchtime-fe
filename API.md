@@ -281,7 +281,7 @@ REST + JSON API다. [기능명세서](https://claude.ai/code/artifact/98ec7729-5
 | --- | --- |
 | 카카오 검색 | 음식점(FD6)만, 반경 안에서 거리순. `menuId`면 메뉴의 `kakaoKeyword`로 키워드 검색 + 음식점 카테고리 검색(카테고리만 맞는 곳), `q`면 그 검색어, 둘 다 없으면 근처 음식점 전체 |
 | `category` | 카카오 카테고리 2단계를 음식 종류 이름으로 바꾼 값(`아시아음식` → `아시안`). 찜 목록 `cuisine` 필터도 이 값으로 거른다 |
-| `mainMenu` · `imageUrl` | 카카오 로컬 API에는 사진 · 대표 메뉴가 없다. `imageUrl`은 우리 사진만 쓴다: 가장 최근 리뷰 사진(2단계-4) → 진행 중인 광고 · 입점 식당의 사진 → 메뉴로 검색했으면 그 메뉴 사진. 없으면 null이고, 앱은 음식 종류(`category`)별 대체 이미지를 보여 준다. 크롤링 · 이미지 검색 · Google 사진은 약관 · 저작권 문제로 쓰지 않는다 |
+| `mainMenu` · `imageUrl` | 카카오 로컬 API에는 사진 · 대표 메뉴가 없다. `imageUrl`은 우리 사진만 쓴다: 가장 최근 리뷰 사진 → 진행 중인 광고 · 입점 식당의 사진 → 메뉴로 검색했으면 그 메뉴 사진. 없으면 null이고, 앱은 음식 종류(`category`)별 대체 이미지를 보여 준다. `imageSource`는 그 출처(`review` · `sponsored` · `menu` · null)다. 메뉴 사진과 대체 이미지는 이 식당의 실제 사진이 아니므로, 앱은 큰 사진(상세 · 찜 카드)에 "예시 이미지로, 실제 식당 음식과 다를 수 있어요", 썸네일(목록)에 "예시" 배지를 붙인다. 크롤링 · 이미지 검색 · Google 사진은 약관 · 저작권 문제로 쓰지 않는다 |
 | `GET /restaurants/{placeId}` | 선택 쿼리 `lat` · `lng`를 주면 거리(`distanceM` · `walkMinutes`)를 채우고, 없으면 0. 카카오에는 ID로 한 곳을 조회하는 API가 없어서, 서버가 검색 결과로 돌려준 식당(7일)이나 찜 · 광고에 저장한 정보로 찾는다. 못 찾으면 404 |
 | `PUT /me/favorites/{placeId}` | 위와 같은 이유로 검색 · 상세에서 본 식당만 찜할 수 있다(아니면 404 "목록에서 다시 찜해 주세요"). 성공은 204 |
 | `POST /restaurants/{placeId}/menu-reports` | 204. 같은 사용자 · 식당 · 메뉴를 다시 제보하면 409 `ALREADY_REPORTED_MENU` |
@@ -299,14 +299,15 @@ REST + JSON API다. [기능명세서](https://claude.ai/code/artifact/98ec7729-5
 | --- | --- | --- | --- |
 | GET | `/restaurants/{placeId}/reviews?sort=recent`\|rating\_desc\|rating\_asc\|photo | 식당 리뷰 목록 (공개) | 리뷰 모두 보기 |
 | GET | `/restaurants/{placeId}/review-form` | 리뷰 쓰기용 메뉴 목록·좋았던 점 태그 | 리뷰 쓰기 |
-| POST | `/uploads/review-photos` | 사진 업로드 URL 발급 (최대 5장, 장당 10MB) | 리뷰 쓰기 |
+| POST | `/uploads/review-photos` | 사진 업로드 URL 발급 (최대 5장, 장당 5MB) | 리뷰 쓰기 |
+| PUT | `uploadUrl` (`/uploads/review-photos/{photoId}?exp=&sig=`) | 사진 파일 올리기 (발급받은 주소 그대로) | 리뷰 쓰기 |
 | POST | `/restaurants/{placeId}/reviews` | 리뷰 등록 | 리뷰 쓰기 |
 | GET | `/me/reviews` | 내 리뷰 목록 | MY |
 | PATCH | `/reviews/{id}` | 내 리뷰 수정 | MY |
 | DELETE | `/reviews/{id}` | 내 리뷰 삭제 | MY |
 | POST | `/reviews/{id}/reports` | 리뷰 신고 (같은 리뷰는 한 번만) | 리뷰 목록 |
 
-메뉴 목록은 우리 메뉴 마스터 중 그 식당 카테고리에 맞는 것과, 이 식당 리뷰에 자주 나온 메뉴를 합쳐 만든다. 목록에 없는 메뉴는 직접 입력할 수 있다.
+메뉴 목록은 이 식당 리뷰에 자주 나온 메뉴(많은 순)와, 우리 메뉴 마스터 중 그 식당 카테고리에 맞는 메뉴의 키워드를 합쳐 최대 20개로 만든다. 목록에 없는 메뉴는 직접 입력할 수 있다. 태그는 서버가 정한 목록(`tags`)에서만 고를 수 있다. 식당은 검색 · 상세에서 본 곳만 찾을 수 있어서(식당 API와 같은 이유) 모르는 `placeId`면 404다.
 
 ```json
 // POST /restaurants/2271043/reviews
@@ -327,11 +328,25 @@ REST + JSON API다. [기능명세서](https://claude.ai/code/artifact/98ec7729-5
 | rating | 1\~5 정수, 필수 |
 | menus, tags | 각 최대 10개, 선택 |
 | content | 최대 500자, 선택 |
-| photoIds | 최대 5개, 업로드 API가 돌려준 id |
+| photoIds | 최대 5개, 업로드 API가 돌려준 id. 내가 올렸고(업로드 완료) 다른 리뷰에 붙지 않은 사진만, 아니면 400 `fields.photoIds` |
 
-`POST /uploads/review-photos` — `{ "count": 2 }` → `{ "items": [{ "photoId": "ph_91a", "uploadUrl": "https://..." }] }`. 앱은 `uploadUrl`에 파일을 PUT으로 올리고 `photoId`만 리뷰에 담는다 (저장소 미결정, 미리 서명된 URL 가정).
+| 리뷰 API 세부 | 규칙 |
+| --- | --- |
+| 정리 | 메뉴 · 태그는 앞뒤 공백 · 빈 값 · 중복을 빼고, 항목당 20자까지. 후기는 앞뒤 공백을 빼고 비면 null |
+| 하루 한 개 | 같은 사용자 · 식당에 오늘(KST) 쓴 리뷰가 있으면 409 `REVIEW_DAILY_LIMIT`. 삭제한 리뷰는 세지 않는다 |
+| 정지 | 정지 중인 사용자는 리뷰 등록 · 수정 · 사진 주소 발급 · 신고가 403 `USER_SUSPENDED`(`until`, 무기한은 null). 삭제는 된다 |
+| 목록 | `?sort=&cursor=&limit=`(기본 20, 최대 50), 응답 `{ items: Review[], nextCursor }`. `photo`는 사진 있는 리뷰만 최신순, 별점 정렬은 같은 별점이면 최신순 |
+| 등록 | 201 `{ review, placeStats }` |
+| 수정 `PATCH` | 보낸 항목만 바꾼다. `photoIds`를 보내면 그 목록 · 순서로 바꾸고 빠진 사진은 리뷰에서 뗀다. 남의 리뷰 403, 없거나 삭제된 리뷰 404. 200 `{ review, placeStats }` |
+| 삭제 | 204. 기록은 남기고(`deletedAt`) 목록 · 별점 · 리뷰 수 · 메뉴 근거에서 뺀다 |
+| 집계 | 등록 · 수정 · 삭제 때 같은 트랜잭션에서 식당 별점 합 · 리뷰 수를 다시 세고, "먹은 메뉴"가 메뉴 마스터 이름 · 키워드와 같으면 그 메뉴의 리뷰 근거(먹은 사람 수, `menuEvidence.count`)도 다시 센다 |
+| 식당 사진 | 사진이 있는 가장 최근 리뷰의 첫 사진이 식당 `imageUrl`이 된다(식당 API 참고) |
 
-`POST /reviews/{id}/reports` — `{ "reason": "abuse" | "ad" | "false_info" | "irrelevant", "memo": "선택, 200자" }`. 자기 리뷰는 신고할 수 없다.
+`POST /uploads/review-photos` — `{ "count": 2 }` → `{ "items": [{ "photoId": "ph_91a", "uploadUrl": "https://api.../v1/uploads/review-photos/ph_91a?exp=…&sig=…" }] }`. 6장 이상이면 400 `TOO_MANY_PHOTOS`.
+
+앱은 `uploadUrl`에 파일을 본문으로 PUT하고(로그인 헤더 필요 없음), 성공(204)하면 `photoId`만 리뷰에 담는다. 주소는 10분 동안 한 번만 쓸 수 있다(서명이 틀리거나 만료 403, 이미 올림 409). 서버가 파일 내용을 보고 JPG · PNG · WEBP, 5MB까지만 받고(아니면 400) 이미지 저장소(S3 호환)에 올린다. 미리 서명된 S3 주소 대신 서버를 거치는 이유는 형식 · 크기를 서버에서 확인하려는 것이다.
+
+`POST /reviews/{id}/reports` — `{ "reason": "abuse" | "ad" | "false_info" | "irrelevant", "memo": "선택, 200자" }` → 204. 자기 리뷰는 403 `FORBIDDEN`, 같은 리뷰를 다시 신고하면 409 `ALREADY_REPORTED`, 없거나 삭제된 리뷰는 404.
 
 ## 어드민 API
 
@@ -491,6 +506,7 @@ CSV 양식 (UTF-8, BOM 있어도 됨, 첫 줄은 머리글, 목록은 `|`로 구
   "openNow": true,          // 광고·입점 식당만, 나머지 null
   "hours": null,            // 예: { "open": "11:00", "close": "21:00", "break": ["15:00", "16:30"], "closedDays": ["sun"] }
   "imageUrl": null,
+  "imageSource": null,     // review · sponsored = 이 식당 실제 사진, menu · null = 예시 이미지 (앱이 "예시" 표시)
   "kakaoMapUrl": "https://place.map.kakao.com/2271043",
   "isFavorite": true,       // 비로그인은 false
   "sponsored": false,
@@ -545,7 +561,8 @@ CSV 양식 (UTF-8, BOM 있어도 됨, 첫 줄은 머리글, 목록은 `|`로 구
 - [ ] 사장님 전용 페이지(입점 신청·식당 정보·영업시간 수정) API 설계 시점
 - [ ] 입금 대기(`pending`) 광고를 기간이 되면 노출할지
 - [ ] 리뷰 작성 자격 (누구나 / 방문 인증) — 현재는 로그인만 하면 작성 가능으로 가정
-- [ ] 리뷰 사진 저장소와 업로드 방식 (미리 서명된 URL 가정)
+- [ ] 운영 이미지 저장소 · CDN (코드는 S3 호환, 개발은 RustFS). 리뷰 사진 업로드는 서버를 거치는 서명 주소로 결정(2026-10-19)
+- [ ] 올리고 리뷰에 붙이지 않은 사진 · 리뷰에서 뗀 사진 정리 작업
 - [ ] 카카오 장소 정보 저장 범위 약관 확인 (favorites·reviews·sponsored에 이름·좌표 저장)
 - [ ] 알림(점심 시간 추천 푸시) API·방식 — 웹뷰 앱 배포 시 정리
 

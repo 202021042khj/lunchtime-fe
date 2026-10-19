@@ -806,3 +806,6 @@ Figma `04 Write Review`(24:480), `11 All Reviews`(36:1523), `11 Report Review`(3
 - (2026-10-16) 식당 이미지: 카카오에 사진이 없어 `FoodImage`에 음식 종류별 대체 이미지 추가(`cuisine` 속성). 리뷰 · 광고 사진 연결은 2단계-4 · 5. 자세한 내용은 `../lunchtime-be/log.md`
 - (2026-10-19) 어드민 사진: `ImageUploadField`(메뉴 사진 · 광고 식당 사진), `NEXT_PUBLIC_API_REAL`에 `admin` 추가. 실서버 연결 중 찾은 버그 4개 수정: 메뉴 저장에 id 섞임, 광고 수정 · 재등록에 place 섞임, "음식점 >" 카테고리, UTC "오늘". 자세한 내용은 `../lunchtime-be/log.md`
 - (2026-10-19) 2단계-3b: `NEXT_PUBLIC_API_REAL`에 `recommendations`(홈 추천 · 검색) 추가, 목 취향 동기화 삭제. 이제 리뷰 · 어드민 유저/신고만 목. 자세한 내용은 `../lunchtime-be/log.md`
+- (2026-10-19) 2단계-4: `NEXT_PUBLIC_API_REAL`에 `reviews` 추가(리뷰 · 사진 · 신고 실서버), 리뷰 사진 업로드 실패 안내 · 고를 때 형식/5MB 확인, MY 리뷰 카드에 리뷰 사진. API.md 리뷰 세부 규칙 정리. 이제 어드민 유저/신고만 목. 자세한 내용은 `../lunchtime-be/log.md`
+- (2026-10-19) 음식 종류별 대체 이미지: `public/cuisine/{korean|chinese|japanese|western|snack|asian|fastfood|salad|other}.webp` 일러스트가 있으면 먼저 쓰고, 없으면 기존 아이콘(`FoodImage`). 아이콘 위에 일러스트를 배경으로 덮는 방식이라 파일이 없어도 깨진 이미지가 보이지 않는다. README "음식 종류별 대체 이미지"에 파일 이름 · 권장 크기. Playwright로 한식만 넣었을 때 한식 행만 일러스트 · 나머지 아이콘 확인
+- (2026-10-19) 예시 이미지 표시: 식당 응답에 `imageSource`(review · sponsored · menu · null) 추가. 실제 사진(리뷰 · 광고)이 아니면 상세 · 찜 카드에 "예시 이미지로, 실제 식당 음식과 다를 수 있어요", 목록 · 리뷰 쓰기 썸네일에 "예시" 배지(`FoodImage` `exampleNotice`). 메뉴 소개 카드(홈 · 취향)는 식당 사진이 아니라 제외. Playwright 7개 통과. 자세한 내용은 `../lunchtime-be/log.md`

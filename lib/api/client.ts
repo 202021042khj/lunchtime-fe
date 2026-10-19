@@ -7,13 +7,18 @@ const BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL ?? "https://api.lunchtime.
 export const USE_MOCK = process.env.NEXT_PUBLIC_API_MOCK !== "false";
 // 2단계 중간 확인용: 목을 쓰면서 백엔드가 만들어진 기능만 실서버로 보낸다.
 // NEXT_PUBLIC_API_REAL=auth,taste,locations (쉼표로 기능 묶음). 백엔드 단계가 끝날 때마다 묶음을 늘린다
+// 리뷰 목록 · 쓰기 · 사진 · 내 리뷰 · 수정 · 삭제 · 신고
+const isReviewPath = (p: string) =>
+  /^\/restaurants\/[^/]+\/(reviews|review-form)$/.test(p) || p === "/uploads/review-photos" || p === "/me/reviews" || p.startsWith("/reviews/");
 const REAL_GROUPS: Record<string, (path: string) => boolean> = {
   auth: (p) => p.startsWith("/auth/") || p === "/me" || p === "/me/password",
   taste: (p) => p === "/me/preferences" || p.startsWith("/preferences/") || p === "/ingredients",
   locations: (p) => p === "/me/locations" || p.startsWith("/me/locations/") || p.startsWith("/locations/"),
-  restaurants: (p) => p === "/restaurants" || p.startsWith("/restaurants/") || p === "/me/favorites" || p.startsWith("/me/favorites/"),
+  restaurants: (p) =>
+    (p === "/restaurants" || p.startsWith("/restaurants/") || p === "/me/favorites" || p.startsWith("/me/favorites/")) && !isReviewPath(p),
   weather: (p) => p === "/weather",
   recommendations: (p) => p === "/recommendations" || p === "/search",
+  reviews: isReviewPath,
   // 어드민 로그인 · 메뉴 관리 · 광고 · 사진 (유저 관리 · 리뷰 신고는 2단계-5까지 목)
   admin: (p) =>
     p.startsWith("/admin/auth/") ||
@@ -33,7 +38,7 @@ export const realAdminAuth = () => REAL.includes(REAL_GROUPS.admin);
 // 이 경로를 목으로 처리하는지
 export const usesMock = (path: string) => USE_MOCK && !REAL.some((isReal) => isReal(path));
 
-// 실서버로 로그인 · 로그아웃 · 탈퇴하면 목 로그인 상태도 맞춘다 (아직 목인 리뷰 화면이 같은 상태로 보이게)
+// 실서버로 로그인 · 로그아웃 · 탈퇴하면 목 로그인 상태도 맞춘다 (아직 목인 화면이 같은 상태로 보이게)
 const SIGN_IN_PATHS = ["/auth/login", "/auth/email/login", "/auth/email/signup"];
 async function syncMock(method: HttpMethod, path: string) {
   const signedIn = SIGN_IN_PATHS.includes(path) ? true : path === "/auth/logout" || (method === "DELETE" && path === "/me") ? false : null;

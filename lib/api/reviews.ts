@@ -21,7 +21,7 @@ export function getReviewForm(placeId: string): Promise<ReviewForm> {
   return request<ReviewForm>("GET", `/restaurants/${placeId}/review-form`);
 }
 
-// 저장소 미결정: 미리 서명된 URL을 받아 앱이 직접 올리는 방식 가정
+// 서명된 업로드 주소를 받아 앱이 파일을 PUT으로 올린다 (API.md 리뷰 사진)
 export function requestPhotoUploads(count: number): Promise<{ items: PhotoUploadSlot[] }> {
   return request<{ items: PhotoUploadSlot[] }>("POST", "/uploads/review-photos", { body: { count } });
 }

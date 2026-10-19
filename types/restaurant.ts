@@ -35,6 +35,8 @@ export interface Restaurant {
   openNow: boolean | null; // 광고·입점 식당만
   hours: RestaurantHours | null;
   imageUrl: string | null;
+  // 사진 출처: review · sponsored = 이 식당 실제 사진, menu(메뉴 대표 사진) · null(사진 없음) = 예시 이미지
+  imageSource: "review" | "sponsored" | "menu" | null;
   kakaoMapUrl: string;
   isFavorite: boolean;
   sponsored: boolean;

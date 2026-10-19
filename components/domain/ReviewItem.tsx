@@ -60,7 +60,7 @@ export default function ReviewItem({ review, variant = "compact", onShare, onRep
           {review.photos.map((photo) => (
             <li key={photo.id} className="flex size-16 items-center justify-center overflow-hidden rounded-xl bg-surface-placeholder text-labels-tertiary">
               {photo.url ? (
-                // eslint-disable-next-line @next/next/no-img-element -- 리뷰 사진 저장소 미정
+                // eslint-disable-next-line @next/next/no-img-element -- 리뷰 사진 저장소 주소가 환경마다 달라 next/image 도메인 설정 대신
                 <img src={photo.url} alt="" className="size-full object-cover" />
               ) : (
                 <ImageIcon aria-hidden className="size-4" />

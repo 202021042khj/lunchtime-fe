@@ -34,7 +34,7 @@ export default function MyReviewsSection({ logic }: { logic: UseMyLogicResult })
           {reviews.map((review) => (
             <li key={review.id} className={`flex flex-col gap-2.5 p-5 md:p-6 ${CARD}`}>
               <div className="flex items-center gap-3">
-                <FoodImage src={null} alt={review.placeName} compact className="size-[52px] shrink-0 rounded-xl" />
+                <FoodImage src={review.photos[0]?.url || null} alt={review.placeName} compact className="size-[52px] shrink-0 rounded-xl" />
                 <div className="flex min-w-0 flex-col gap-0.5">
                   <button
                     type="button"

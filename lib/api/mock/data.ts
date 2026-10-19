@@ -110,7 +110,7 @@ export type MockEvidence = Omit<MenuEvidence, "label">;
 
 // 서버가 계산할 값(거리·찜·근거 문구)은 핸들러에서 붙인다
 export interface MockRestaurant
-  extends Omit<Restaurant, "distanceM" | "walkMinutes" | "isFavorite" | "menuEvidence" | "rating" | "reviewCount"> {
+  extends Omit<Restaurant, "distanceM" | "walkMinutes" | "isFavorite" | "menuEvidence" | "rating" | "reviewCount" | "imageSource"> {
   evidence: Record<string, MockEvidence>;
   sponsoredMenuIds: string[];
   cuisine: string; // 찜 필터용 종류 (한식 · 일식 · 아시안 …)

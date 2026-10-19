@@ -38,7 +38,7 @@ export interface ReviewForm {
   tags: string[];
 }
 
-// POST /uploads/review-photos — 저장소 미결정, 미리 서명된 URL 방식 가정
+// POST /uploads/review-photos — uploadUrl에 파일을 PUT (서버가 확인 후 저장, 10분 · 한 번)
 export interface PhotoUploadSlot {
   photoId: string;
   uploadUrl: string;
